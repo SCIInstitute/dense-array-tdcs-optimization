@@ -55,7 +55,7 @@ maximize w*x
 subject to
 totConstV : norm(y,1) <= 2*tot; %#ok<*VUNUS> %total current bound
 indConstLB : ind(:,1) <= y; %lower bound on individual currents
-indConstUB : y <= ind(:,2); %#ok<*BDSCI> %upper boudn on individual currents
+indConstUB : y <= ind(:,2); %#ok<*BDSCI> %upper bound on individual currents
 %power in the avoid regions is bounded:
 for i = 1:pp
     powConstV{i} : norm(sqrtQ{i}*x) <= sqrt(pmax(i)); 
@@ -85,7 +85,7 @@ if ~strcmp(cvx_status,'Solved')
     subject to
     totConstV : norm(y,1) <= 2*tot; %total current bound
     indConstLB : ind(:,1) <= y; %lower bound on individual currents
-    indConstUB : y <= ind(:,2); %upper boudn on individual currents
+    indConstUB : y <= ind(:,2); %upper bound on individual currents
     for i = 1:pp
         powConstV{i} : norm(sqrtQ{i} * x) <= sqrt(pmax(i)); %power in the avoid regions is bounded
     end
@@ -114,7 +114,7 @@ if ~strcmp(cvx_status,'Solved')
     subject to
     totConstV : norm(y,1) <= 2*tot; %total current bound
     indConstLB : ind(:,1) <= y; %lower bound on individual currents
-    indConstUB : y <= ind(:,2); %upper boudn on individual currents
+    indConstUB : y <= ind(:,2); %upper bound on individual currents
     for i = 1:pp
         powConstV{i} : norm(sqrtQ{i}*x) <= sqrt(pmax(i)); %power in the avoid regions is bounded
     end
