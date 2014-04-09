@@ -14,7 +14,7 @@ function variables = findRequiredVariables4ParraEtAlFormulations(G,T,Jd,roi,k,br
 %parameters
 % A: 
 M = size(G,1)/3;
-[N,L] = size(T);
+[N,~] = size(T);
 
 if size(G,2) ~= N
     error('size of G matrix is wrong');
@@ -31,6 +31,8 @@ end
 %Q_brain = A_ROI' * A_ROI + A_nonROI' * A_nonROI (Q_ROI, Q_nonROI defined
 %accordingly) = T' * G(ROI,:)' * G(ROI,:) * T + similar_for_nonROI
 %v_brain = v_ROI = A_ROI' * Jd_ROI. = T' *  G(ROI,:)' * Jd_ROI.
+
+
 roiIdx = find(roi==1);
 nonroi = brainLabels;
 nonroi(roi==1) = 0;
@@ -40,39 +42,15 @@ expandednonROI = sort([nonroiIdx*3 nonroiIdx*3-1 nonroiIdx*3-2]);
 
 qROItemp = G(expandedROI,:)' * G(expandedROI,:);
 qnonROItemp = G(expandednonROI,:)' * G(expandednonROI,:);
-Q_ROI = T' * qROItemp * T;
-Q_nonROI = T' * qnonROItemp * T;
+variables.Q_ROI = T' * qROItemp * T;
+variables.Q_nonROI = T' * qnonROItemp * T;
 
-Q_brain = Q_ROI + Q_nonROI;
+variables.Q_brain = Q_ROI + Q_nonROI;
 if size(Jd,1) == 3*nnz(roi)
-    Jd_ROI = Jd;
+    variables.Jd_ROI = Jd;
 else
-    Jd_ROI = Jd(expandedROI);
+    variables.Jd_ROI = Jd(expandedROI);
 end
-v_brain = T' * (G(expandedROI,:)' * Jd_ROI);
-%%3.1 b)
-%Q_brain_weighted = w * Q_ROI + wc * Q_nonROI
-%v_brain_weighted = w * v_brain = w * v_ROI
-%%
-w = k*nnz(nonroi)/nnz(roi);
-wC = 1/(w+1);
-w = w/(w+1);
-Q_brain_weighted = w * Q_ROI + wC * Q_nonROI;
-v_brain_weighted = w * v_brain;
-%%3.2 Similar to 3.1 b)
-
-%%3.3
-%Q_lcmv = Q_ROI + Q_nonROI
-Q_lcmv = Q_brain;
-variables = [];
-%%3.4
-%Nothing. 
-
-% roiIndices = find(roi==1);
-% diagVector = wC * ones(numel(roi)*3,1);
-% diagVector([roiIndices*3 roiIndices*3-1 roiIndices*3-2]) = w;
-% n = length(diagVector);
-% W = spdiags(diagVector(:),0,n,n);
-
+variables.v_brain = T' * (G(expandedROI,:)' * Jd_ROI);
 
 

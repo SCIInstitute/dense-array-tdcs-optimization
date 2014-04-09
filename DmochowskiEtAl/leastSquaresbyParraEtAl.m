@@ -1,4 +1,4 @@
-function I = leastSquaresbyParraEtAl(Q,v)
+function I = leastSquaresbyParraEtAl(sqrtQ,v)
 %Finds the electrode current stimulus pattern based on least squares
 %Written by: Seyhmus Guler, 3/8/14
 
@@ -28,6 +28,7 @@ function I = leastSquaresbyParraEtAl(Q,v)
 % and (A'*A) \ A' * Jd = Q \ v where
 % Q = T' * (LFM' * LFM) * T and v = (T' * LFM') * Jd = T' * LFM' * Jd
 
+Q = sqrtQ' * sqrtQ;
 
 if size(Q,1) == size(Q,2) && size(Q,1) == size(v,1)
     I = Q \ v;

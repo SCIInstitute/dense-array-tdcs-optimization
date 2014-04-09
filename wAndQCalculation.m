@@ -3,7 +3,7 @@ function [w,Q] = wAndQCalculation(ROI,avoidRegions,desiredDirection,T,G,elemVolu
 %RUNS ONLY ONCE BEFORE THE OPTIMIZATION
 %
 %Written by: Seyhmus Guler, Revisited: Moritz Dannhauer
-%Last edit: 10/7/13 by Guler,S
+%Last edit: 3/26/13 by Guler,S
 %
 %Needs faster ways to do multiplications
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -20,14 +20,14 @@ function [w,Q] = wAndQCalculation(ROI,avoidRegions,desiredDirection,T,G,elemVolu
         %Note that JfromU and elemVolumes can be calculated using 
         %anisomappingFromNodePotentialsToCurrentDensity() function
 %OUTPUTS:
-    %w: the transfer matrix from current array to directional current
+    %w: The row vector from current array to directional current
         %density in the ROI. size: 1 x #electrodes
-    %Q: the transfer matrices from current array to norm 2 squared integral
-        %of current density over avoid regions. These matrices will be
+    %Q: the transfer matrices from current array to norm 2 integral
+        % of current density over avoid regions. These matrices will be
         %used to set power constraints over different regions.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
-% %check if the sizes of the inputs match,if not give an error
+%% check if the sizes of the inputs match,if not give an error
 if size(G,2) ~= size(T,1) || ~isequal(numel(ROI),size(avoidRegions,2),numel(elemVolumes))
     error('mismatch in matrix sizes');
 end
@@ -60,9 +60,10 @@ fprintf('%s%f%s\n','w is calculated in ',toc,' seconds.');
 Q = cell(1,nnRoi);
 for i = 1:nnRoi
 Qtemp = G(expandedNotROI{i},:)' * S{i} * G(expandedNotROI{i},:); %intermadiate step
-Q{i} = T' * Qtemp * T;
+Qtemp2 = T' * Qtemp * T;
+Q{i} = chol(Qtemp2);
 end
 
-fprintf('%s%f%s\n','Q is calculated in ',toc,' seconds.');
+fprintf('%s%f%s\n','sqrtQ is calculated in ',toc,' seconds.');
 
 
