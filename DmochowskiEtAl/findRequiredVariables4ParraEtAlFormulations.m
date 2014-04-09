@@ -45,7 +45,7 @@ qnonROItemp = G(expandednonROI,:)' * G(expandednonROI,:);
 variables.Q_ROI = T' * qROItemp * T;
 variables.Q_nonROI = T' * qnonROItemp * T;
 
-variables.Q_brain = Q_ROI + Q_nonROI;
+variables.Q_brain = variables.Q_ROI + variables.Q_nonROI;
 if size(Jd,1) == 3*nnz(roi)
     variables.Jd_ROI = Jd;
 else
