@@ -51,30 +51,37 @@ end
 if (size(G,2) ~= size(T,1) || ~isequal(size(ROIs,2),size(avoidRegions,2),numel(V)))
     error('mismatch in matrix sizes');
 end
-for r = 1:10
-    mkdir([str2 '\roi' num2str(r)]);
+
+for r = 1:size(ROIs,1)
+    avoidRegionR = avoidRegions;
+    mkdir([str2 '/roi' num2str(r)]);
     ROIr = ROIs(r,:);
-    avoidRegions(:,ROIr ==1) = 0;
+    avoidRegionR(:,ROIr ==1) = 0;
     desiredDir4ROIr = directions{r};
     for d = 1:numel(desiredDir4ROIr)
         desiredDirection = desiredDir4ROIr{d};
-        [w,Q] = wAndQCalculation(ROIr,avoidRegions,desiredDirection,T,G,V);
-        save([pwd '/' str2 '/roi' num2str(r) '/wMatrix' num2str(d) '.mat'],'w');
+        [w,Q] = wAndQCalculation(ROIr,avoidRegionR,desiredDirection,T,G,V);
+        save([pwd '/' str2 '/roi' num2str(r) '/wQMatrix' num2str(d) '.mat'],'w','Q');
         wScale = norm(w,2);
         w = w/wScale;
         for ss = 1: numel(totCurBound)
             for si = 1:size(indCurBound,2)
                 for pi = 1:size(powerBound,2)
-                    [currentArray,fval] = optimizationUsingCvxToolbox(w,Q,totCurBound(ss),indCurBound(:,si),powerBound(:,pi));
-                    %potential = T*currentArray;
-                    %dVect = JfromU * potential;
-                    %potential = potential';
-                    %currentIntensity = sqrt(sum(reshape(dVect.*dVect,3,[])));
-                    %currentDensity = reshape(dVect,3,[]);
-                    save([pwd '/' str2  '/roi' num2str(r) '/elecCurrent'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentArray');
-                    %save([pwd '/' str2  '/roi' num2str(r) '/potential'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'potential');
-                    %save([pwd '/' str2  '/roi' num2str(r) '/intensity'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentIntensity');
-                    %save([pwd '/' str2  '/roi' num2str(r) '/density'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentDensity');
+                    [currentArray,fval,actSet] = optimizationUsingCvxToolbox(w,Q,totCurBound(ss),indCurBound(:,si),powerBound(:,pi),1e-8);
+                    currentArrayReferenceAdded = [currentArray; -sum(currentArray)];
+                    if ~isnan(fval)
+                        fval = fval*wScale;
+                        potential = T*currentArray;
+                        dVect = G * potential;
+                        potential = potential';
+                        currentIntensity = sqrt(sum(reshape(dVect.*dVect,3,[])));
+                        currentDensity = reshape(dVect,3,[]);
+                        save([pwd '/' str2  '/roi' num2str(r) '/fAct'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'fval','actSet');
+                        save([pwd '/' str2  '/roi' num2str(r) '/elecCurrent'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentArrayReferenceAdded');
+                        save([pwd '/' str2  '/roi' num2str(r) '/potential'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'potential');
+                        save([pwd '/' str2  '/roi' num2str(r) '/intensity'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentIntensity');
+                        save([pwd '/' str2  '/roi' num2str(r) '/density'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentDensity');
+                    end
                 end
             end
         end

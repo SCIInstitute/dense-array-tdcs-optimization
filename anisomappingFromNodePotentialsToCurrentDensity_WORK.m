@@ -1,4 +1,4 @@
-function [curDensFromPot,elemVolumes] = anisomappingFromNodePotentialsToCurrentDensity(mesh,conductivity)
+function [curDensFromPot,elemVolumes] = anisomappingFromNodePotentialsToCurrentDensity_WORK(mesh,conductivity)
 %FINDS THE MAPPING BETWEEN THE POTENTIAL AT THE MESH NODES TO CURRENT
 %DENSITY OF EACH ELEMENT OF THE MESH.  
 %
@@ -18,7 +18,11 @@ function [curDensFromPot,elemVolumes] = anisomappingFromNodePotentialsToCurrentD
         %mesh.field:(1 x #elements), each column containing the material 
             %label of the corresponding element. 
     %conductivity: the volume conductor.
-        %It is a matrix of size  #elementsx 9.
+        %It is a cell array of 1x #tissue types.
+        %If a material is anisotropic, either
+            %each element has a scalar value (e.g. skull, inhomogeneous)
+            %each element has 3x3 conductivity tensor (e.g. GM,WM)
+        %otherwise, there is only a scalar for isotropic tissues.
         % 3x3 conductivity tensor of each element is reshaped to 1x9 vector 
         % and put in corresponding raw in the conductivity matrix.
 %OUTPUTS:
@@ -41,28 +45,38 @@ end
 if size(field,1) ~= 1
     field = field';
 end
-if size(conductivity,2) ~= 9
-    conductivity = conductivity';
+if numel(conductivity) ~= unique(field)
+    error('mismatch between number of tissues and conductivity look up');
 end
 
 if size(field,2) ~= size(elem,2)
     error('mismatch between element and field sizes');
 end
-if size(conductivity,1) ~= size(elem,2) 
-    error('mismatch between element and volume conductor sizes');
+for i =1:numel(conductivity)
+    if ~ismember(size(conductivity{i},1),[nnz(field==i) 1])
+        error('mismatch between element and volume conductor sizes');
+    end
 end
 
 fprintf('Calculating the transfer matrix from potentials to current densities...\n');
 M = size(elem,2); %number of elements
 N = size(node,2); %number of nodes
 
-nL = 1e5;
+nL = 2e5;
 elemVolumes = zeros(1,M);
 expandedNode = reshape(node(:,elem),12,[]);
 expandedElem = double([elem; elem+N; elem+2*N]);
-Jtemp = sparse(3*N,M);
+Jtemp = spalloc(3*N,M,12*M);
 K = floor(M/nL);
 remain = M - K*nL;
+
+% for i = 1:numel(conductivity)
+%     if size(conductivity{i},1) == 1
+%     elseif size(conductivity{i},2) == 1
+%     elseif size(conductivity{i},2) == 9
+%     end
+% end
+        
 
 temUtoJ = spalloc(3*N,nL,12*nL);
 temUtoJremain = sparse(3*N,remain);
@@ -77,7 +91,7 @@ for k=1: K+1
         tempCond = conductivity(idx,:);
         tempNode = expandedNode(:,idx);
         parfor i = 1:nL
-            A = inv([ones(1e,4); reshape(tempNode(:,i),3,4)])';
+            A = inv([ones(1,4); reshape(tempNode(:,i),3,4)])';
             tempVol(i) = abs(1/6/det(A));
             temUtoJ(:,i) = sparse(tempElem(:,i),1,reshape((-reshape(tempCond(i,:),3,3)*A(2:4,:))',12,1),3*N,1);
         end

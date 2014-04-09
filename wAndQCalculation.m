@@ -27,7 +27,7 @@ function [w,Q] = wAndQCalculation(ROI,avoidRegions,desiredDirection,T,G,elemVolu
         %used to set power constraints over different regions.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
-%% check if the sizes of the inputs match,if not give an error
+%%check if the sizes of the inputs match,if not give an error
 if size(G,2) ~= size(T,1) || ~isequal(numel(ROI),size(avoidRegions,2),numel(elemVolumes))
     error('mismatch in matrix sizes');
 end
