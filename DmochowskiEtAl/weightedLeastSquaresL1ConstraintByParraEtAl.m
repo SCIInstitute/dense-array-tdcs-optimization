@@ -1,4 +1,4 @@
-function [I,dV] = weightedLeastSquaresL1ConstraintByParraEtAl(sqrtQ_weighted,v_weighted,Smax)
+function [I,fval,dV] = weightedLeastSquaresL1ConstraintByParraEtAl(sqrtQ_weighted,v_weighted,Smax)
 %Section 3.2 Weighted least squares with L1 constraint.
 %Based on  the equations in the paper with the title "Optimized
 %Multi-electrode stimulation increases focality and intensity at the target
@@ -45,5 +45,6 @@ if ~strcmp(cvx_status,'Solved')
     cvx_end
 end
 I = x;
+fval = cvx_optval;
 dV = [indConstLB; indConstUB];
 end

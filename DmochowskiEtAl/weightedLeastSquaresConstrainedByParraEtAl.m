@@ -1,4 +1,4 @@
-function [I,dV] = weightedLeastSquaresConstrainedByParraEtAl(sqrtQ_weighted,v_weighted,Smax)
+function [I,fval,dV] = weightedLeastSquaresConstrainedByParraEtAl(sqrtQ_weighted,v_weighted,Smax)
 %Finds electrode currents based on least squares with weights.
 %Written by: Seyhmus Guler, 3/8/14
 
@@ -56,6 +56,7 @@ if ~strcmp(cvx_status,'Solved')
     cvx_end
 end
 I = x;
+fval = cvx_optval;
 dV = totConst;
 end
 

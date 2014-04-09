@@ -45,7 +45,7 @@ for ss = 1:size(smax,2)
             clear dVect;
             stats.cmax(ss,si,pi) = max(currentIntensity(field~=8));
             stats.cmaxb(ss,si,pi) = max(currentIntensity(field==4 | field ==5));
-            stats.caveb(ss,si,pi) = sum(currentIntensity(field==4 | field==5) .* vole(field ==4 | field==5))/sum(vole(field==4 | field ==5));
+            stats.caveb(ss,si,pi) = sum(currentIntensity(field==4 | field== 5) .* vole(field ==4 | field==5))/sum(vole(field==4 | field ==5));
             stats.cmedb(ss,si,pi) = median(currentIntensity(field==4 | field ==5));
             stats.caveROI(ss,si,pi) = sum(currentIntensity(roi==1) .* vole(roi==1))/sum(vole(roi==1)); 
         end
