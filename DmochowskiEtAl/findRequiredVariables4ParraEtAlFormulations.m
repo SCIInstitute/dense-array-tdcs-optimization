@@ -1,4 +1,4 @@
-function variables = findRequiredVariables4ParraEtAlFormulations(G,T,Jd,roi,k,brainLabels)
+function variables = findRequiredVariables4ParraEtAlFormulations(G,T,Jd,roi,brainLabels)
 %FINDS THE MATRICES NEEDED IN DIFFERENT OPTIMIZATION SCENARIOS
 %Based on  the equations in the paper with the title "Optimized 
 %Multi-electrode stimulation increases focality and intensity at the target 

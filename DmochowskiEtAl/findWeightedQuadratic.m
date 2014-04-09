@@ -1,11 +1,9 @@
-function [sqrtQ_weighted,v_brain_weighted] = findWeightedQuadratic(Q_ROI,Q_nonROI,v_brain,k,roi,brainLabels)
+function [sqrtQ_weighted,v_brain_weighted] = findWeightedQuadratic(Q_ROI,Q_nonROI,v_brain,k,numofROIelements,numofnonROIelements)
 %weights the quadratic and other Jd term such that the contribution of ROI
 %is larger. 
 
 %Written by Seyhmus Guler 4/8/14
-nonroi = brainLabels;
-nonroi(roi==1) = 0;
-w = k*nnz(nonroi)/nnz(roi);
+w = k*numofnonROIelements/numofROIelements;
 wC = 1/(w+1);
 w = w/(w+1);
 
