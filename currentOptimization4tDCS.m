@@ -1,4 +1,4 @@
-function currentOptimization4tDCS(mesh,T,conductivity,directions,ROIs,avoidRegions,totCurBound,indCurBound,powerBound,G,V)
+function currentOptimization4tDCS(mesh,T,conductivity,directions,ROIs,avoidRegions,tot,ind,pmax,G,V)
 %CALCULATES THE BEST ELECTRODE CURRENT STIMULUS CONFIGURATION FOR 
 %TARGETED AND DIRECTIONAL TDCS. 
 %
@@ -6,25 +6,28 @@ function currentOptimization4tDCS(mesh,T,conductivity,directions,ROIs,avoidRegio
 %constraints on the total injected current, each individual electrode 
 %current and elecrical power in the avoidance areas.
 %
-%Written by: Seyhmus Guler, Revisited: Moritz Dannhauer
-%Last edit: 10/7/13 by Guler,S
+%Written by: Seyhmus Guler, Revised: Moritz Dannhauer
+%Last edit: 4/29/13 by Guler,S
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% M := # Elements in the mesh.
+% N := # Nodes in the mesh.
+% L := # Electrodes (reference excluded so L = #electrodes on the head - 1).
 %INPUTS: 
     %mesh: Tetrahedral realistic head mesh. A structure consisting of 
         %'cell','node','field' variables.
     %T: transfer matrix found by solving the forward problem. It is the
         %mapping from electrode currents to potential field at the nodes.
-        %size: (#mesh nodes) x (#electrodes)
-    %conductivity: volume conductor model. matrix of size (9 x #elements)
+        %size: N x L
+    %conductivity: volume conductor model. matrix of size M x 9
     %directions: desired directions. It is a cell array of cell arrays. 
         %Each cell consists of desired direction(s) for corresponding roi. 
     %ROIs: region(s) of interest. Each row represents a different ROI.
     %avoidRegions: avoidance region(s). Each row represents a avoidance
         %region
-    %totCurBound: the upper bound on the total current entering the head.
-    %indCurBound: uppers bound(s) on the individual electrode currents.
-    %powerBound: upper bound(s) on the electrical power in avoidRegions.
+    %tot: the upper bound on the total current entering the head.
+    %ind: uppers bound(s) on the individual electrode currents.
+    %pmax: upper bound(s) on the electrical power in avoidRegions.
 %OUTPUTS:
     %The best electrode current array, the corresponding potential field, 
     % current density field and current intensity field for each 
@@ -32,7 +35,7 @@ function currentOptimization4tDCS(mesh,T,conductivity,directions,ROIs,avoidRegio
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 str2 = char(date); 
 if(nargin <= 9)
-    [G,V] = mappingFromNodePotentialsToCurrentDensity(mesh,conductivity);
+    [G,V] = anisomappingFromNodePotentialsToCurrentDensity(mesh,conductivity);
     save -v7.3 G.mat G
     save -v7.3 V.mat V
 end
@@ -44,7 +47,7 @@ end
 if(size(ROIs,2) ~= M)
     ROIs = ROIs';
 end
-if(size(powerBound,1) ~= size(avoidRegions,1))
+if(size(pmax,1) ~= size(avoidRegions,1))
     error('mismatch in matrix sizes');
 end
 
@@ -60,14 +63,14 @@ for r = 1:size(ROIs,1)
     desiredDir4ROIr = directions{r};
     for d = 1:numel(desiredDir4ROIr)
         desiredDirection = desiredDir4ROIr{d};
-        [w,Q] = wAndQCalculation(ROIr,avoidRegionR,desiredDirection,T,G,V);
-        save([pwd '/' str2 '/roi' num2str(r) '/wQMatrix' num2str(d) '.mat'],'w','Q');
+        [w,sqrtQ] = linearQuadraticCoefficientCalculation(ROIr,avoidRegionR,desiredDirection,T,G,V);
+        save([pwd '/' str2 '/roi' num2str(r) '/variablesAndBounds' num2str(d) '.mat'],'w','sqrQ','tot','ind','pmax','desiredDirection','ROIr');
         wScale = norm(w,2);
         w = w/wScale;
-        for ss = 1: numel(totCurBound)
-            for si = 1:size(indCurBound,2)
-                for pi = 1:size(powerBound,2)
-                    [currentArray,fval,actSet] = optimizationUsingCvxToolbox(w,Q,totCurBound(ss),indCurBound(:,si),powerBound(:,pi),1e-8);
+        for ss = 1: numel(tot)
+            for si = 1:size(ind,2)
+                for pi = 1:size(pmax,2)
+                    [currentArray,fval,dualV] = optimizationUsingCvxToolbox(w,sqrtQ,tot(ss),ind(:,si),pmax(:,pi));
                     currentArrayReferenceAdded = [currentArray; -sum(currentArray)];
                     if ~isnan(fval)
                         fval = fval*wScale;
@@ -76,7 +79,7 @@ for r = 1:size(ROIs,1)
                         potential = potential';
                         currentIntensity = sqrt(sum(reshape(dVect.*dVect,3,[])));
                         currentDensity = reshape(dVect,3,[]);
-                        save([pwd '/' str2  '/roi' num2str(r) '/fAct'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'fval','actSet');
+                        save([pwd '/' str2  '/roi' num2str(r) '/fDual'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'fval','dualV');
                         save([pwd '/' str2  '/roi' num2str(r) '/elecCurrent'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentArrayReferenceAdded');
                         save([pwd '/' str2  '/roi' num2str(r) '/potential'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'potential');
                         save([pwd '/' str2  '/roi' num2str(r) '/intensity'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentIntensity');

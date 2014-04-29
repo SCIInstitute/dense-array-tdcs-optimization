@@ -18,9 +18,9 @@ function [curDensFromPot,elemVolumes] = anisomappingFromNodePotentialsToCurrentD
         %mesh.field:(1 x #elements), each column containing the material 
             %label of the corresponding element. 
     %conductivity: the volume conductor.
-        %It is a matrix of size  #elementsx 9.
+        %It is a matrix of size  #elements x 9.
         % 3x3 conductivity tensor of each element is reshaped to 1x9 vector 
-        % and put in corresponding raw in the conductivity matrix.
+        % and put in corresponding row in the conductivity matrix.
 %OUTPUTS:
     %curDensFromPot: the mapping from node potentials to current density 
         % size: (3 #elements) x (#nodes)
@@ -77,7 +77,7 @@ for k=1: K+1
         tempCond = conductivity(idx,:);
         tempNode = expandedNode(:,idx);
         parfor i = 1:nL
-            A = inv([ones(1e,4); reshape(tempNode(:,i),3,4)])';
+            A = inv([ones(1,4); reshape(tempNode(:,i),3,4)])';
             tempVol(i) = abs(1/6/det(A));
             temUtoJ(:,i) = sparse(tempElem(:,i),1,reshape((-reshape(tempCond(i,:),3,3)*A(2:4,:))',12,1),3*N,1);
         end

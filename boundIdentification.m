@@ -5,7 +5,7 @@ function [stats,fval,dualVariables] = boundIdentification(w,sqrtQ,G,T,field,roi,
 
 %INPUTS
     %w: Linear coefficients for the objective function
-    %Q: Quadratic matrices representing avoid region power constraints.
+    %sqrtQ: Quadratic matrices representing avoid region power constraints.
     %G: Matrix representing -conductivity * Gradient() operator. If
     %multiplied with potential vector, results in current density in the 
     %domain
@@ -21,8 +21,8 @@ function [stats,fval,dualVariables] = boundIdentification(w,sqrtQ,G,T,field,roi,
 L = numel(w);
 
 %bound
-smax = 1:2;
-smaxi = 0.06:0.01:0.50;
+smax = 1;
+smaxi = 0.06:0.01:0.40;
 pmax = 10.^(3.4:-0.1:1);
 
 %initialization

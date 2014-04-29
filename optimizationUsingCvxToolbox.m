@@ -1,23 +1,26 @@
 function [electrodeCurrents,fval,dualVariables] = optimizationUsingCvxToolbox(w,sqrtQ,tot,ind,pmax)
-%FINDS THE BEST ELECTRODE CURRENT STIMULUS CONFIGURATION USING CVX
-%IN ADDITION IT FINDS THE FUNCTION VALUE AT SOLUTION AND THE SET OF ACTIVE
-%CONSTRAINTS IF REQUIRED.
+%% FINDS THE BEST ELECTRODE CURRENT STIMULUS CONFIGURATION USING CVX TOOLKIT
+% IN ADDITION IT FINDS THE FUNCTION VALUE AT SOLUTION AND DUAL VARIABLES (FOR ACTIVE SET 
+% INVESTIGATIN PURPOSES) IF REQUIRED.
 %
-%Written by: Seyhmus Guler, 3/25/14
+%Written by: Seyhmus Guler, 4/29/14
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %INPUTS:
 %w: Linear weights for the objective function.
-%sqrtQ: square roots of matrices for quadratic constraint
-%tot: the total current bound
-%ind: individual electrode current bounds
-%pmax: the bound on the electrical power in avoidance regions
-%actTh: A constraint is considered active if the value is at most
-% actTh far from the constraint boundary.
+%sqrtQ: Square roots of matrices for quadratic constraint.
+%tot: The total current bound
+%ind: Individual electrode current bound.
+%pmax: The bound on the electrical power in avoidance regions
+%
 %OUTPUTS:
-%CurrentArray: best solution for electrode current array
-%fval: objective function, the current in the ROI along the dd
-%actCons: a logical array showing the active constraints at solution.
+%electrodeCurrents: best solution for electrode current array.
+%fval: Objective function, the current in the ROI along the desired
+    %direction.
+%DualVariables: dual variables for the constraints at solution. The
+    % variables corresponding to first total bound, second individual 
+    % lower bound, third individual upper bound and lastly power bound 
+    % is stored in an array of size #constraints x 1.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 L = numel(w); %Number of electrodes

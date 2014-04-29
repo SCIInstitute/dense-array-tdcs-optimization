@@ -1,7 +1,6 @@
 function surfaceNormalD = surfaceNormalProjection(headMesh,roi,i)
-%% FINDS SURFACE NORMAL BASED ON THE PROJECTION TO THE SURFACE
+%%FINDS SURFACE NORMAL BASED ON THE PROJECTION TO THE SURFACE
 %Written by: Seyhmus Guler, 3/8/14
-%%
 % INPUTS
 % OUTPUTS
 %%surfaceNormalD: The surface normal desired modulation direction

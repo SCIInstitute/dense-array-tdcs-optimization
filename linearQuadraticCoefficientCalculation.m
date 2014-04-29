@@ -1,4 +1,4 @@
-function [ w, sqrtQ ]  = linearQuadraticCoefficientCalculation(ROI, avoidRegions, desiredDirection, G, T, elemVolumes)
+function [ w, sqrtQ ]  = linearQuadraticCoefficientCalculation(ROI, avoidRegions, desiredDirection, T, G, elemVolumes)
 %% Calculates the linear and quadratic terms for the objective function and
 % power constraint of hd-tDCS electrode current optimization. The objective
 % function is linear and power constraint is quadratic functions of electrode
