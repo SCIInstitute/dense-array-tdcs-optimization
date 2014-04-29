@@ -64,7 +64,7 @@ for r = 1:size(ROIs,1)
     for d = 1:numel(desiredDir4ROIr)
         desiredDirection = desiredDir4ROIr{d};
         [w,sqrtQ] = linearQuadraticCoefficientCalculation(ROIr,avoidRegionR,desiredDirection,T,G,V);
-        save([pwd '/' str2 '/roi' num2str(r) '/variablesAndBounds' num2str(d) '.mat'],'w','sqrQ','tot','ind','pmax','desiredDirection','ROIr');
+        save([pwd '/' str2 '/roi' num2str(r) '/variablesAndBounds' num2str(d) '.mat'],'w','sqrtQ','tot','ind','pmax','desiredDirection','ROIr');
         wScale = norm(w,2);
         w = w/wScale;
         for ss = 1: numel(tot)
