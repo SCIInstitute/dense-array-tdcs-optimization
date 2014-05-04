@@ -32,7 +32,7 @@ stats.tcaveb = sum(currentIntensity(field==4 | field== 5) .* vole(field ==4 | fi
 stats.tcmedb = median(currentIntensity(field==4 | field ==5));
 stats.tcaveROI = sum(currentIntensity(roi==1) .* vole(roi==1))/sum(vole(roi==1));
 
-save('currentStats','t','o','stats');
+save('currentStats','theirs','ours','stats');
 
 
 
