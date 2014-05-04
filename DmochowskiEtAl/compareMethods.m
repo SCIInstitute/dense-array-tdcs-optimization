@@ -2,8 +2,8 @@ function [theirs,ours,stats] = compareMethods(sqrtQ_weighted, v_weighted, ind, w
 
 [theirs.Solution, theirs.Fval, theirs.tdV] = weightedLeastSquaresL1ConstraintByParraEtAl(sqrtQ_weighted,v_weighted,ind);
 
-pBrain = norm(sqrtQ*electrodeCurrent)^2;
-tot = (norm(electrodeCurrent,1)+abs(sum(electrodeCurrent)));
+pBrain = norm(cell2mat(sqrtQ)*theirs.Solution)^2;
+tot = (norm(theirs.Solution,1)+abs(sum(theirs.Solution)));
 wScale = norm(w);
 
 [ours.Solution, ours.Fval, ours.dV] = optimizationUsingCvxToolbox(w/wScale,sqrtQ,tot,ind,pBrain);
