@@ -1,4 +1,9 @@
 function surfaceNormalD = surfaceNormalInterpolation(headMesh,roi)
+%Finds the surface normal direction for the elements in the ROI via
+%interpolation. First finds the direction for the elements that are on the
+%CSF-ROI or WM-ROI interface and then interpolates through the ROI. 
+
+%Note: This function is terribly scripted, thus it is not guaranteed to be fast.
 
 %%Reading inputs
 elem = headMesh.cell;
@@ -19,17 +24,15 @@ roiWMtouching = find(sum(ismember(roiSurface',elem(:,field==5))) >= 3);
 
 % csfSurface.face = roiSurface(roiCSFtouching,:)';
 % csfSurface.node = node;
-% save(['csfSurfaceInterpolation' num2str(i)],'csfSurface');
+% save('csfSurfaceInterpolation','csfSurface');
 % wmSurface.face = roiSurface(roiWMtouching,:)';
 % wmSurface.node = node;
-% save(['wmSurfaceInterpolation' num2str(i)],'wmSurface');
+% save('wmSurfaceInterpolation','wmSurface');
 
 %Defining the direction for the surface elements
 [rSONfield,rSONelements] = surfOuterNormal(roiElements,node,roiSurface);
-%rSONcenters = rSONelements.elemCenters;
 rSONfield = rSONfield(:,[roiCSFtouching roiWMtouching]);
 rSONfield(:,1:numel(roiCSFtouching)) = rSONfield(:,1:numel(roiCSFtouching))*-1;
-%rSONcenters = rSONcenters(:,[roiCSFtouching roiWMtouching]);
 rSONindices = rSONelements.elemIndices;
 rSONindices = rSONindices([roiCSFtouching roiWMtouching]);
 

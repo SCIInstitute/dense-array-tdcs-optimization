@@ -1,31 +1,44 @@
-function [I,fval,dV] = weightedLeastSquaresConstrainedByParraEtAl(sqrtQ_weighted,v_weighted,Smax)
-%Finds electrode currents based on least squares with weights.
-%Written by: Seyhmus Guler, 3/8/14
+function [I, fVal, dV] = weightedLeastSquaresConstrainedByParraEtAl(sqrtQ_weighted, v_weighted, tot)
+% Weighted least squares solution to hd_tDCS electrode current stimulus 
+% optimization with total current constraint.
+%
+% Synopsis: [I, fVal, dV] = weightedLeastSquaresConstrainedByParraEtAl( ...
+%           sqrtQ_weighted, v_weighted, tot)
+%
+% Input:    sqrtQ_weighted  = chol factor of weighted quadratic matrix.
+%           v_weighted      = weighted linear term.
+%           tot             = total current bound.
+%
+% Output:   I       =   array of electrode currents.
+%           fVal    =   least squares error for best solution. 
+%           dV      =   dual variables for the constraints.
 
-%Section 3.1 b) Weighted least squares with norm1 constraint.
-%Based on  the equations in the paper with the title "Optimized
-%Multi-electrode stimulation increases focality and intensity at the target
-%by Dmochowski et al, 2011.
+% Notes:    1. Use the equation in section 3.1. of " Optimized multi-electrode 
+%           stimulation increases focality and intensity at the target.",
+%           Jacek P Dmochowski, et al., Journal of neural engineering 
+%           8.4 (2011): 046011.
+%
+%           2. We convert quadratic objective function to norm 2 in order
+%           to speed up the convergence. This is the reason behind using
+%           Cholesky factor of the quadratic matrix instead of the matrix
+%           itself. minimize(x' * Q * x - 2*v*x) is equivalent to
+%           minimize( norm(chol(Q) * (x - m), 2 ) ) where m = Q\v.
+%           
+%           3. The conversion from paper equation to the formula in the
+%           script:
+%           minimize_over_I ( || sqrt(W) (Jd - A*I) || ) ^2
+%           = (Jd - A*I)' * sqrt(W)' * sqrt(W)* (Jd -A*I)
+%           = (Jd - A*I)' * W * (Jd - A*I)
+%           = Jd'*W*Jd + I'*A'*W*A*I - I'*A'*W*Jd - Jd'*W*A*I 
+%           = Jd'*W*Jd + I'*(A'*W*A)*I - 2*(Jd'*W*A)*I
+%           = constant + I'*(  Q   )*I - 2*(   v   )*I  where
+%           Q := A' * W * A, v := Jd' * W * A.
+%
+%           Minimizing above expression is equivalent to minimizing
+%           (according to note 2. and assuming sqrtQ'*sqrtQ = Q) :
+%           norm ( sqrtQ * (x - inv(Q) * v)).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%INPUTS:
-%Q_weighted : T' * Jmat' * W * Jmat * T. Weighted quadratic term. Size: LxL
-%v_veighted : T' * Jmat' * W * Jd. Weighted linear term. Size: Lx1
-
-%I = min_overI || sqrt(W) (Jd - A*I)||^2 subject to total current constr.
-% (Jd - A*I)' * sqrt(W)' * sqrt(W)* (Jd -A*I)
-% = (Jd - A*I)' * W * (Jd - A*I) = (Jd'*W*Jd + I' * A'*W*A * I - I'*A'*W*Jd
-% - Jd'*W*A*I = Jd'*W*Jd + I'*(A'*W*A)*I - 2 (Jd'*W*A)*I
-
-% minimizing above expression is equivalent to minimizing:
-% I'* (A'*W*A)* I - 2(Jd'*W*A) * I =~ I' * Q * I - 2 * v' * I
-
-% A = LFM * T =>
-% Q = T' * LFM' * W * LFM * T
-% v' = Jd' * W * LFM * T
-
-% I'QI - 2v'I = (I - inv(Q)v)' Q (I - inv(Q)v) + constant
-
+tic;
 L = size(sqrtQ_weighted,2); %number of electrodes
 Q = sqrtQ_weighted' * sqrtQ_weighted;
 m = Q\v_weighted;
@@ -39,25 +52,28 @@ y = [x; -sum(x)];
 dual variable totConst
 minimize norm(sqrtQ_weighted*(x-m));
 subject to
-totConst : norm(y,1) <= 2*Smax;
+totConst : norm(y,1) <= 2*tot;
 cvx_end
 if ~strcmp(cvx_status,'Solved')
     fprintf('%s\n','No solution with high precision, trying low precision.');
     cvx_begin quiet
     cvx_solver sedumi
-    cvx_precision high
+    cvx_precision low
     variable x(L)
     expression y(L+1)
     y = [x; -sum(x)];
     dual variable totConst
     minimize norm(sqrtQ_weighted*(x-m));
     subject to
-    totConst : norm(y,1) <= 2*Smax;
+    totConst : norm(y,1) <= 2*tot;
     cvx_end
 end
+
 I = x;
-fval = cvx_optval;
+fVal = cvx_optval;
 dV = totConst;
+fprintf('%s%f%s\n', 'Weighted least squares solution is found in ', toc, ...
+    ' seconds.');
 end
 
 

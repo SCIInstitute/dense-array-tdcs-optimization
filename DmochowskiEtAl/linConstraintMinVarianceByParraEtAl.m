@@ -1,24 +1,28 @@
-function [I,dV] = linConstraintMinVarianceByParraEtAl(sqrtQ,C,J0,Smax,opt)
-%Section 3.3 Linearly constrained minimum variance
-%Based on  the equations in the paper with the title "Optimized
-%Multi-electrode stimulation increases focality and intensity at the target
-%by Dmochowski et al, 2011.
-%%INPUTS:
-%sqrtQ:
-%C:
-%J0:
-%Smax:
-%opt:
-%%OUTPUTS:
-%I: current Array
+function [I, fVal, dV] = linConstraintMinVarianceByParraEtAl(sqrtQ,C,J0,Smax,opt)
+% Linearly constraint minimum variance solution to hd_tDCS electrode 
+% current stimulus optimization with total or individual current constraint.
+%
+% Synopsis: [I, fVal, dV] = linConstraintMinVarianceByParraEtAl( ...
+%           sqrtQ, C, J0, Smax, opt)
+%
+% Input:    sqrtQ   =   chol factor of quadratic matrix.
+%           C       =   matrix linking electrode currents to current
+%                       density at the target node(s).
+%           JO      =   current density at the target.
+%           Smax    =   constraint. Either tot or ind.  
+%           opt     =   1 if individual constraint, 0 if total constraint. 
+%
+% Output:   I       =   array of electrode currents.
+%           fVal    =   least squares error for best solution. 
+%           dV      =   dual variables for the constraints.
 
-%I = min_overI ||A*I||^2 subject to C*I = J0. Hard linear constraint
-% A = LFM * T and ||A*I||^2 = I' * A' * A * I = I' * Q * I where
-% A' * A = T' * LFM' * LFM * T = Q
+% Notes:    1. Use the equation in section 3.3. of " Optimized multi-electrode 
+%           stimulation increases focality and intensity at the target.",
+%           Jacek P Dmochowski, et al., Journal of neural engineering 
+%           8.4 (2011): 046011.
+%
 
-% if (opt = 1) Individual electrode constraint
-% else (opt = 0) Total current constraint
-
+tic;
 L = size(sqrtQ,2); %number of electrodes
 if (size(J0,1) ~= size(C,1))
     error('Size mismatch between J0 and C');
@@ -47,7 +51,7 @@ if opt == 1 %individual electrode constraint
     cvx_end
     
     if ~strcmp(cvx_status,'Solved')
-        fprintf('%s\n','No solution with high resolution, trying lower precision.');
+        fprintf('%s\n','No solution with high precision, trying lower precision.');
         cvx_begin quiet
         cvx_solver sedumi
         cvx_precision low
@@ -68,6 +72,7 @@ if opt == 1 %individual electrode constraint
     end
     
     I = x;
+    fVal = cvx_optval;
     dV = [linConst; indConstLB; indConstUB];
     
     
@@ -90,7 +95,7 @@ elseif opt == 0 %total current constraint
     cvx_end
     
     if ~strcmp(cvx_status,'Solved')
-        fprintf('%s\n','No solution with high resolution, trying lower precision.');
+        fprintf('%s\n','No solution with high precision, trying lower precision.');
         cvx_begin quiet
         cvx_solver sedumi
         cvx_precision low
@@ -108,8 +113,13 @@ elseif opt == 0 %total current constraint
         cvx_end
     end
     I = x;
+    fVal = cvx_optval;
     dV = [linConst; totConst];
 end
+
+fprintf('%s%f%s\n', 'Linearly constrained minimum variance solution is found in ', toc, ...
+    ' seconds.');
+
 end
 
 

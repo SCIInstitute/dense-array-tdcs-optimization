@@ -1,39 +1,31 @@
 function I = leastSquaresbyParraEtAl(sqrtQ,v)
-%Finds the electrode current stimulus pattern based on least squares
-%Written by: Seyhmus Guler, 3/8/14
+% Least squares solution to hd_tDCS electrode current stimulus optimization.
+%
+% Synopsis: I = leastSquare(sqrtQ,v)
+%
+% Input:    sqrtQ   =   square root (Chol factor) of left hand side matrix.
+%           v       =   right hand side vector.
+%
+% Output:   I       =   array of electrode currents.
 
-%Section 3.1 a) Least squares with no constraints.
-%Based on  the equations in the paper with the title "Optimized 
-%Multi-electrode stimulation increases focality and intensity at the target 
-%by Dmochowski et al, 2011.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%INPUTS:
-    % Q: A' * A = T' * Jmat' * Jmat * T. Size: LxL, L being # electrodes
-    % v: A' * Jd = T' * Jmat' * Jd. Size: Lx1
-%OUTPUTS:
-    % I: Electrode currents Size: Lx1
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% %minimize_overI ||desiredJ - matrixA * I ||^2
-% %solution to this least squares problem is 
-% % I = inv(A'* A)*A' * desiredJ
-
-% A = LeadFieldMatrix * T; 3MxL = (3MxN) x (NxL)
-    %Current density everywhere = Lead field matrix * transfer matrix *
-    %electrode currents
-    
-% A' = T' * LFM' 
-% A = LFM' * T => A' * A = T' * (LFM' * LFM) * T
-% and (A'*A) \ A' * Jd = Q \ v where
-% Q = T' * (LFM' * LFM) * T and v = (T' * LFM') * Jd = T' * LFM' * Jd
+% Notes:    1. Use the equation in section 3.1. of " Optimized multi-electrode 
+%           stimulation increases focality and intensity at the target.",
+%           Jacek P Dmochowski, et al., Journal of neural engineering 
+%           8.4 (2011): 046011.
+%
+%           2. Below is the relationship between matrices used in the paper 
+%           and formula used in this script:
+%           A = G * T => A' * A = T' * (G' * G) * T
+%           and (A'*A) \ A' * Jd = Q \ v where
+%           Q = T' * (LFM' * LFM) * T and 
+%           v = (T' * LFM') * Jd = T' * LFM' * Jd
 
 Q = sqrtQ' * sqrtQ;
 
 if size(Q,1) == size(Q,2) && size(Q,1) == size(v,1)
     I = Q \ v;
 else
-    error('mismatch in matrix sizes');
+    error('Mismatch in matrix sizes.');
 end
 
     
