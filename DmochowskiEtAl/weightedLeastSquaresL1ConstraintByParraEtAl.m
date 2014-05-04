@@ -1,18 +1,36 @@
-function [I,fval,dV] = weightedLeastSquaresL1ConstraintByParraEtAl(sqrtQ_weighted,v_weighted,Smax)
-%Section 3.2 Weighted least squares with L1 constraint.
-%Based on  the equations in the paper with the title "Optimized
-%Multi-electrode stimulation increases focality and intensity at the target
-%by Dmochowski et al, 2011.
+function [I, fVal, dV] = weightedLeastSquaresL1ConstraintByParraEtAl(sqrtQ_weighted, v_weighted, ind)
+% Weighted least squares solution to hd_tDCS electrode current stimulus 
+% optimization with L1 constraint.
+%
+% Synopsis: [I, fval, dV] = weightedLeastSquaresL1ConstraintByParraEtAl(...
+%           sqrtQ_weighted, v_weighted, ind)
+%
+% Input:    sqrtQ_weighted  = chol factor of weighted quadratic matrix.
+%           v_weighted      = weighted right hand side vector.
+%           ind             = individual electrode current bound.
+%
+% Output:   I       =   array of electrode currents.
+%           fVal    =   least squares error for best solution. 
+%           dV      =   dual variables for the constraints.
 
-%I = min_overI || sqrt(W) (Jd - A*I)||^2 subject to L1 current constr.
-%See weightedLeastSquaresConstrainedByParraEtAl for more detail.
+% Notes:    1. Use the equation in section 3.2. of " Optimized multi-electrode 
+%           stimulation increases focality and intensity at the target.",
+%           Jacek P Dmochowski, et al., Journal of neural engineering 
+%           8.4 (2011): 046011.
+%
+%           2. We convert quadratic objective function to norm 2 in order
+%           to speed up the convergence. This is the reason behind using
+%           Cholesky factor of the quadratic matrix instead of the matrix
+%           itself. minimize(x' * Q * x - 2*v*x) is equivalent to
+%           minimize( norm(chol(Q) * (x - m), 2 ) ) where m = Q\v.
 
+tic;
 L = size(sqrtQ_weighted,2); %number of electrodes
 Q = sqrtQ_weighted' * sqrtQ_weighted;
 m = Q\v_weighted;
 
-if size(Smax,1) == L
-    Smax(L+1,:) = Smax(end,:);
+if size(ind,1) == L
+    ind(L+1,:) = ind(end,:);
 end
 
 cvx_begin quiet
@@ -25,14 +43,15 @@ dual variable indConstLB
 dual variable indConstUB
 minimize norm(sqrtQ_weighted * (x-m));
 subject to
-indConstLB : -Smax <= y;
-indConstUB : y <= Smax;
+indConstLB : -ind <= y;
+indConstUB : y <= ind;
 cvx_end
+
 if ~strcmp(cvx_status,'Solved')
     fprintf('%s\n','No solution with high precision, trying low precision.');
     cvx_begin quiet
     cvx_solver sedumi
-    cvx_precision high
+    cvx_precision low
     variable x(L)
     expression y(L+1)
     y = [x; -sum(x)];
@@ -40,11 +59,14 @@ if ~strcmp(cvx_status,'Solved')
     dual variable indConstUB
     minimize norm(sqrtQ_weighted * (x-m));
     subject to
-    indConstLB : -Smax <= y;
-    indConstUB : y <= Smax;
+    indConstLB : -ind <= y;
+    indConstUB : y <= ind;
     cvx_end
 end
+
 I = x;
-fval = cvx_optval;
+fVal = cvx_optval;
 dV = [indConstLB; indConstUB];
+fprintf('%s%f%s\n', 'Weighted least squares solution is found in ', toc, ...
+    ' seconds.');
 end
