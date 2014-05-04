@@ -61,9 +61,7 @@ if (nargin == 5) %calculating quadratic terms require input brainLabels
     qROItemp = G(expandedROI,:)' * G(expandedROI,:);
     qnonROItemp = G(expandednonROI,:)' * G(expandednonROI,:);
     variables.Q_ROI = T' * qROItemp * T;
-    clear qROItemp;
     variables.Q_nonROI = T' * qnonROItemp * T;
-    clear qnonROItemp;
     variables.Q_brain = variables.Q_ROI + variables.Q_nonROI;
 end
 
@@ -73,4 +71,4 @@ if size(Jd,1) == 3*nnz(ROI)
 else
     variables.Jd_ROI = Jd(expandedROI);
 end
-variables.v_brain = T' * (G(expandedROI,:)' * variables.Jd_ROI);
+variables.v_brain = T' * (G(expandedROI,:)' * Jd_ROI);
