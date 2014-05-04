@@ -71,4 +71,4 @@ if size(Jd,1) == 3*nnz(ROI)
 else
     variables.Jd_ROI = Jd(expandedROI);
 end
-variables.v_brain = T' * (G(expandedROI,:)' * Jd_ROI);
+variables.v_brain = T' * (G(expandedROI,:)' * variables.Jd_ROI);
