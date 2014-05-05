@@ -60,7 +60,11 @@ for r = 1:size(ROIs,1)
     mkdir([str2 '/roi' num2str(r)]);
     ROIr = ROIs(r,:);
     avoidRegionR(:,ROIr ==1) = 0;
+    if isempty(directions)
+        desiredDir4ROIr{1} = surfaceNormalInterpolation(mesh,ROIr);
+    else
     desiredDir4ROIr = directions{r};
+    end
     for d = 1:numel(desiredDir4ROIr)
         desiredDirection = desiredDir4ROIr{d};
         [w,sqrtQ] = linearQuadraticCoefficientCalculation(ROIr,avoidRegionR,desiredDirection,T,G,V);

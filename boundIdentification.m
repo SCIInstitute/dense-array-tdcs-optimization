@@ -22,8 +22,8 @@ L = numel(w);
 
 %bound
 smax = 1;
-smaxi = 0.06:0.01:0.40;
-pmax = 10.^(3.4:-0.1:1);
+smaxi = 0.05:0.005:0.50;
+pmax = 10.^(3.4:-0.05:1);
 
 %initialization
 fval = zeros(size(smax,2),size(smaxi,2),size(pmax,2));
@@ -32,6 +32,7 @@ stats.cmaxb = zeros(size(smax,2),size(smaxi,2),size(pmax,2));
 stats.caveb = zeros(size(smax,2),size(smaxi,2),size(pmax,2));
 stats.cmedb = zeros(size(smax,2),size(smaxi,2),size(pmax,2));
 stats.caveROI = zeros(size(smax,2),size(smaxi,2),size(pmax,2));
+stats.cmedROI = zeros(size(smax,2),size(smaxi,2),size(pmax,2));
 dualVariables = zeros(size(smax,2),size(smaxi,2),size(pmax,2),3+2*L+numel(sqrtQ));
 wScale = norm(w);
 
@@ -47,7 +48,8 @@ for ss = 1:size(smax,2)
             stats.cmaxb(ss,si,pi) = max(currentIntensity(field==4 | field ==5));
             stats.caveb(ss,si,pi) = sum(currentIntensity(field==4 | field== 5) .* vole(field ==4 | field==5))/sum(vole(field==4 | field ==5));
             stats.cmedb(ss,si,pi) = median(currentIntensity(field==4 | field ==5));
-            stats.caveROI(ss,si,pi) = sum(currentIntensity(roi==1) .* vole(roi==1))/sum(vole(roi==1)); 
+            stats.caveROI(ss,si,pi) = sum(currentIntensity(roi==1) .* vole(roi==1))/sum(vole(roi==1));
+            stats.vmedROI(ss,si,pi) = sum(currentIntensity(roi==1) .* vole(roi==1))/sum(vole(roi==1));
         end
     end
 end
