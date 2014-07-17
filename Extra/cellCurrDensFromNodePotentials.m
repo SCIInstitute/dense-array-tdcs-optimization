@@ -52,7 +52,7 @@ tempVol = zeros(1,nL);
 tempVolRemain = zeros(1,remain);
 matlabpool close force
 matlabpool open;
-for k=1: 2
+for k=1: K+1
     if k <= K
         idx = 1+(k-1)*nL:k*nL;
         tempElem = expandedElem(:,idx);
