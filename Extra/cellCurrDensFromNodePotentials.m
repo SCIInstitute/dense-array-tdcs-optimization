@@ -1,4 +1,4 @@
-function [curDensFromPot,elemVolumes] = cellCurrDensFromNodePotentials(tetrahedralMesh,conductivity)
+function [curDensFromPot,elemVolumes] = cellCurrDensFromNodePotentials(tetrahedralMesh)
 %FINDS THE MAPPING BETWEEN THE POTENTIAL AT THE MESH NODES TO CURRENT
 %DENSITY OF EACH ELEMENT OF THE MESH.  
 %
@@ -27,26 +27,64 @@ function [curDensFromPot,elemVolumes] = cellCurrDensFromNodePotentials(tetrahedr
 tic;    
 elem = double(tetrahedralMesh.cell); %tetrahedral element list
 node = tetrahedralMesh.node; %node positions
-%field = tetrahedralMesh.field; %Field variable not needed for now
+conductivity = tetrahedralMesh.field;
 clear tetrahedralMesh;
 
 if size(conductivity,2) ~= size(elem,2) 
     error('mismatch between element and volume conductor sizes');
 end
 
-fprintf('Calculating the mapping matrix from node potentials to cell current densities...\n');
+fprintf('Calculating the transfer matrix from potentials to current densities...\n');
 M = size(elem,2); %number of elements
 N = size(node,2); %number of nodes
-Jtemp = sparse(3*N,M);
-elemVolumes = zeros(1,M);
 
-for i =1:M %for each element in the mesh
-    A = inv([ones(1,4); node(:,elem(:,i))])'; %inverse the position matrix
-    elemVolumes(i) = abs(1/6/det(A)); %volume of element in terms of node potentials
-    Jtemp(:,i) = sparse([elem(:,i); elem(:,i)+N; elem(:,i)+2*N],1,reshape((-conductivity(i)*A(2:4,:))',12,1),3*N,1);
+nL = 2e5;
+elemVolumes = zeros(1,M);
+expandedNode = reshape(node(:,elem),12,[]);
+expandedElem = double([elem; elem+N; elem+2*N]);
+Jtemp = sparse(3*N,M);
+K = floor(M/nL);
+remain = M - K*nL;
+
+temUtoJ = spalloc(3*N,nL,12*nL);
+temUtoJremain = sparse(3*N,remain);
+tempVol = zeros(1,nL);
+tempVolRemain = zeros(1,remain);
+matlabpool close force
+matlabpool open;
+for k=1: 2
+    if k <= K
+        idx = 1+(k-1)*nL:k*nL;
+        tempElem = expandedElem(:,idx);
+        tempCond = conductivity(:,idx);
+        tempNode = expandedNode(:,idx);
+        parfor i = 1:nL
+            A = inv([ones(1,4); reshape(tempNode(:,i),3,4)])';
+            tempVol(i) = abs(1/6/det(A));
+            temUtoJ(:,i) = sparse(tempElem(:,i),1,reshape((-tempCond(:,i)*A(2:4,:))',12,1),3*N,1);
+        end
+        Jtemp(:,idx) = temUtoJ;
+        elemVolumes(idx) = tempVol;
+    else
+        idx = 1+(k-1)*nL:M;
+        tempElem = expandedElem(:,idx);
+        tempCond = conductivity(:,idx);
+        tempNode = expandedNode(:,idx);
+        parfor i = 1:remain
+            A = inv([ones(1,4); reshape(tempNode(:,i),3,4)])';
+            tempVolRemain(i) = abs(1/6/det(A));
+            temUtoJremain(:,i) = sparse(tempElem(:,i),1,reshape((-tempCond(:,i)*A(2:4,:))',12,1),3*N,1);
+        end
+        Jtemp(:,1+(k-1)*nL:M) = temUtoJremain;
+        elemVolumes(idx) = tempVolRemain;
+    end
+    disp([num2str(k) '/' num2str(K+1)])
 end
+matlabpool close;
+clear temUtoJ temUtoJremain eelem enode K remain tempVol tempVolRemain;
 curDensFromPot = reshape(Jtemp,N,[])';
-fprintf('%s%f%s\n','The mapping matrix from potential to current density and element volumes are calculated in ',toc,' seconds.\n');
+clear Jtemp;
+fprintf('%s%f%s\n','The mapping matrix from potential to current density and element volumes are calculated in ',toc,' seconds');
 
 
 
