@@ -20,13 +20,19 @@ crossProduct = zeros(3, size(volSurface,1));
 
 %For each surface triangle find the normal direction via for loop. There
 %may be computationally more efficient ways.
-for i=1:size(volSurface,1)
+matlabpool close force
+matlabpool open;
+parfor i=1:size(volSurface,1)
     %find which cell that triangle belongs to
     volElementIdx(i) = find(sum(ismember(elem,volSurface(i,:))) >= 3);
     %cross producto to find the normal direction and normalization.
     crossProduct(:,i) = cross(nodeDifference21(:,i),nodeDifference31(:,i));
     crossProduct(:,i) = crossProduct(:,i)/norm(crossProduct(:,i));
+    if mod(i,1000) == 0
+        disp(i);
+    end
 end
+matlabpool close;
 
 %We will need to make sure the direction is outwards by following script.
 surfElemC = elemCenter(node,elem(:,volElementIdx)); %tetra centers.
