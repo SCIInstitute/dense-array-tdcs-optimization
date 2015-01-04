@@ -1,4 +1,4 @@
-function [currentArray,xhat,zhat,t] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSources,Ith)
+function [currentArray] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSources,Ith,zhat)
 %% Finds the optimal solution with limited number of current sources
 %  on the dominant electrode set in the original solution using branch
 %  and bound algorithm
@@ -25,6 +25,9 @@ function [currentArray,xhat,zhat,t] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSo
 %% Reading inputs and checking sizes
 tic;
 L = numel(w);
+Ltemp = L;
+normW = norm(w);
+w = w/norm(w);
 pp = numel(sQ);
 
 if size(ind,1) == L %In case reference electrode bound is not defined
@@ -39,13 +42,17 @@ if nSources > 14
     error('The number of current sources is less than 15.');
 end
 
+if nargin <=8
+    zhat = -inf;
+end
+
 %% First optimization to get the general unconstrained (i.e. there may be
 %  as many current sources as number of electrodes) solution
 [ca,fval,dv] = optimizationUsingCvxToolbox(w, sQ, tot, ind, pmax);
 
 currentArray.origCurrent = ca;
 currentArray.origPot = Te * ca;
-currentArray.origObj = fval;
+currentArray.origObj = normW*fval;
 currentArray.origDV = dv;
 
 %% Reduce the problem size by setting small currents to 0.
@@ -63,6 +70,7 @@ L = numel(w);
 sQ = newVar.sQ;
 Te = Te(newVar.idx,newVar.idx);
 
+currentArray.newVar = newVar;
 %% Find an initial set of states for the electrodes.
 %
 % IDEA: Use maybe k clustering to start the initialization.
@@ -97,13 +105,17 @@ unknownSetOrder = unknownSet(idxOrder);
 
 %Initialization
 clear x;
-[~,xhat,zhat,~] = babOne(w,sQ,tot,ind,pmax,Te);
+%[~,xhat,zhat,~] = babOne(w,sQ,tot,ind,pmax,Te);
 activeSet(1) = 1;
 %zhat = -inf;
 z(1) = zhat;
 t = 0;
 labelfet = '0123456789ABCDE';
 percentDone = 0;
+currentArray.xhatBAB = [];
+currentArray.zhatBAB = [];
+currentArray.tBAB = [];
+currentArray.branchBAB = [];
 %Define electrode ordering here or in the loop (if we would like to have
 %different ordering of the importance of the electrodes at each branch
 
@@ -112,7 +124,7 @@ percentDone = 0;
 
 while ~isempty(activeSet)
     
-    fprintf('%d\t%.2f%s\t',t,percentDone,'%');
+    fprintf('%.2f%s\t%d\t%d\t',percentDone,'%',t,numel(activeSet));
     %100*(1-sum(1./(activeSet-mod(activeSet,nStates)))),'%') is another way
     %to calculate the ratio of finished branches vs total
     
@@ -235,7 +247,7 @@ while ~isempty(activeSet)
             cvx_end
         end
         
-        zr = cvx_optval;
+        zr = normW*cvx_optval;
         %fprintf('%f\t',zr);
         if zhat < zr
             if numel(unique(round(pot(setdiff(1:L,combinedStates{1}))))) < nStates
@@ -243,7 +255,10 @@ while ~isempty(activeSet)
                 % of that branch is found).
                 zhat = zr;
                 fprintf('%s\t','Z');
-                xhat = x;
+                currentArray.xhatBAB(:,end+1) = x; 
+                currentArray.zhatBAB(end+1) = zhat;
+                currentArray.tBAB(end+1) = t;
+                currentArray.branchBAB{end+1} = elecAssign;
             elseif numel(elecAssign) < numel(unknownSetOrder)
                 %we add the children branch to the active set
                 activeSet(end+1) = [nStates*r+i-1];
@@ -264,4 +279,6 @@ while ~isempty(activeSet)
         warning('The number of branches exceeded 1000.')
     end
 end
+currentArray.t = t;
+currentArray.convTime = toc;
 fprintf('%s%f%s\n','Limited current sources optimization is solved in ',toc,' seconds.');
