@@ -26,8 +26,6 @@ function [currentArray] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSources,Ith,zh
 tic;
 L = numel(w);
 Ltemp = L;
-normW = norm(w);
-w = w/norm(w);
 pp = numel(sQ);
 
 if size(ind,1) == L %In case reference electrode bound is not defined
@@ -52,7 +50,7 @@ end
 
 currentArray.origCurrent = ca;
 currentArray.origPot = Te * ca;
-currentArray.origObj = normW*fval;
+currentArray.origObj = fval;
 currentArray.origDV = dv;
 
 %% Reduce the problem size by setting small currents to 0.
@@ -110,6 +108,7 @@ activeSet(1) = 1;
 %zhat = -inf;
 z(1) = zhat;
 t = 0;
+totalactSetSize = 1;
 labelfet = '0123456789ABCDE';
 percentDone = 0;
 currentArray.xhatBAB = [];
@@ -125,6 +124,7 @@ currentArray.branchBAB = [];
 while ~isempty(activeSet)
     
     fprintf('%.2f%s\t%d\t%d\t',percentDone,'%',t,numel(activeSet));
+    totalactSetSize = totalactSetSize + numel(activeSet);
     %100*(1-sum(1./(activeSet-mod(activeSet,nStates)))),'%') is another way
     %to calculate the ratio of finished branches vs total
     
@@ -247,7 +247,7 @@ while ~isempty(activeSet)
             cvx_end
         end
         
-        zr = normW*cvx_optval;
+        zr = cvx_optval;
         %fprintf('%f\t',zr);
         if zhat < zr
             if numel(unique(round(pot(setdiff(1:L,combinedStates{1}))))) < nStates
@@ -281,4 +281,5 @@ while ~isempty(activeSet)
 end
 currentArray.t = t;
 currentArray.convTime = toc;
+currentArray.avgActSetSize = totalactSetSize/t*pr;
 fprintf('%s%f%s\n','Limited current sources optimization is solved in ',toc,' seconds.');
