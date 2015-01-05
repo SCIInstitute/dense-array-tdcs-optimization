@@ -109,6 +109,7 @@ activeSet(1) = 1;
 %zhat = -inf;
 z(1) = zhat;
 t = 0;
+totalactSetSize = 1;
 labelfet = '0123456789ABCDE';
 percentDone = 0;
 currentArray.xhatBAB = [];
@@ -124,6 +125,7 @@ currentArray.branchBAB = [];
 while ~isempty(activeSet)
     
     fprintf('%.2f%s\t%d\t%d\t',percentDone,'%',t,numel(activeSet));
+    totalactSetSize = totalactSetSize + numel(activeSet);
     %100*(1-sum(1./(activeSet-mod(activeSet,nStates)))),'%') is another way
     %to calculate the ratio of finished branches vs total
     
@@ -280,4 +282,5 @@ while ~isempty(activeSet)
 end
 currentArray.t = t;
 currentArray.convTime = toc;
+currentArray.avgActSetSize = totalactSetSize/t*pr;
 fprintf('%s%f%s\n','Limited current sources optimization is solved in ',toc,' seconds.');
