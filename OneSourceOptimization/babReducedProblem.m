@@ -26,8 +26,6 @@ function [currentArray] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSources,Ith,zh
 tic;
 L = numel(w);
 Ltemp = L;
-normW = norm(w);
-w = w/norm(w);
 pp = numel(sQ);
 
 if size(ind,1) == L %In case reference electrode bound is not defined
@@ -42,18 +40,19 @@ if nSources > 14
     error('The number of current sources is less than 15.');
 end
 
-if nargin <=8
-    zhat = -inf;
-end
-
 %% First optimization to get the general unconstrained (i.e. there may be
 %  as many current sources as number of electrodes) solution
 [ca,fval,dv] = optimizationUsingCvxToolbox(w, sQ, tot, ind, pmax);
 
 currentArray.origCurrent = ca;
 currentArray.origPot = Te * ca;
-currentArray.origObj = normW*fval;
+currentArray.origObj = fval;
 currentArray.origDV = dv;
+
+
+if nargin <=8
+    zhat = fval*9/10;
+end
 
 %% Reduce the problem size by setting small currents to 0.
 [newVar,percentLoss] = ...
@@ -247,7 +246,7 @@ while ~isempty(activeSet)
             cvx_end
         end
         
-        zr = normW*cvx_optval;
+        zr = cvx_optval;
         %fprintf('%f\t',zr);
         if zhat < zr
             if numel(unique(round(pot(setdiff(1:L,combinedStates{1}))))) < nStates
