@@ -22,10 +22,10 @@ wm = headMesh.cell(:,headMesh.field==5);
 csf = headMesh.cell(:,headMesh.field==3);
 node = headMesh.node;
 clear headMesh;
-sfn = zeros(3,size(graymatterRow,1));
-
-
+sfn = zeros(3,size(graymatterRow,1)+1);
 faceNeighborhood4GM = faceneighbors(graymatterRow);
+faceNeighborhood4GM(end+1,:) = [0 0 0 0];
+faceNeighborhood4GM(faceNeighborhood4GM==0) = size(graymatterRow,1)+1;
 
 gmSurface = volface(graymatterRow)';
 
@@ -33,6 +33,7 @@ gmSurface = volface(graymatterRow)';
 GM_CSF_Interface = find(sum(ismember(gmSurface,csf)) >= 3);
 if opts == 1
     GM_WM_Interface = find(sum(ismember(gmSurface,wm)) >= 3);
+    GM_WM_Interface = setdiff(GM_WM_Interface,GM_CSF_Interface);
 else
     GM_WM_Interface = [];
 end
@@ -45,7 +46,7 @@ end
 % save('wmSurfaceInterpolation','wmSurface');
 
 % %Defining the direction for the surface elements
-[rSONfield,~] = surfOuterNormal(graymatterRow',node,gmSurface,mapping);
+[rSONfield] = surfOuterNormal(graymatterRow',node,gmSurface,mapping);
 rSONfield = rSONfield(:,[GM_CSF_Interface GM_WM_Interface]);
 rSONfield(:,1:numel(GM_CSF_Interface)) = rSONfield(:,1:numel(GM_CSF_Interface))*-1;
 %
@@ -53,36 +54,40 @@ rSONfield(:,1:numel(GM_CSF_Interface)) = rSONfield(:,1:numel(GM_CSF_Interface))*
 doneIndices = mapping([GM_CSF_Interface GM_WM_Interface]);
 %interpolation
 sfn(:,doneIndices) = rSONfield;
-while (numel(doneIndices) < size(graymatterRow,1))
+while (numel(doneIndices) < size(graymatterRow,1)+1)
     % for i=1:50
     %      sfn = normc(sfn(:,faceNeighborhood4GM(:,1))+...
     %                             sfn(:,faceNeighborhood4GM(:,2))+...
     %                             sfn(:,faceNeighborhood4GM(:,3))+...
     %                             sfn(:,faceNeighborhood4GM(:,4)));
     %      sfn(:,cidx) = surfaceNormal;
-    newSetIndices = unique(faceNeighborhood4GM(doneIndices,:));
-    deleteSetIndices = [find(newSetIndices ==0); find(ismember(newSetIndices,doneIndices) == 1)];
-    newSetIndices(deleteSetIndices) = [];
-    for i=1:numel(newSetIndices)
-        averagingIndices = faceNeighborhood4GM(newSetIndices(i),:);
-        averagingIndices(averagingIndices==0) = [];
-        sfn(:,newSetIndices(i)) = sum(sfn(:,averagingIndices),2);
-    end
+    newSetIndices = setdiff(unique(faceNeighborhood4GM(doneIndices,:)),doneIndices);
+    avIdx = faceNeighborhood4GM(newSetIndices,:);
+    sfn(:,newSetIndices) = normc(sfn(:,avIdx(:,1))+sfn(:,avIdx(:,2))+sfn(:,avIdx(:,3))+...
+        sfn(:,avIdx(:,4)));
     sfn = normc(sfn);
     doneIndices = [doneIndices newSetIndices'];
+    disp(num2str(numel(doneIndices)));
 end
 %Filling 0's in a matrix
-
-for i = 1:5
-    ordering = randperm(size(graymatterRow,1));
-    for k = 1:numel(ordering)
-        if ~ismember(ordering(k), rSONindices)
-            averagingIndices = faceNeighborhood4GM(ordering(k),:);
-            averagingIndices(averagingIndices==0) = [];
-            sfn(:,ordering(k)) = normc(sum(sfn(:,averagingIndices),2));
+innerElements = setdiff(1:size(graymatterRow,1),[GM_CSF_Interface GM_WM_Interface]);
+for i = 1:10
+    ordering = randperm(numel(innerElements));
+    innerElements(ordering) = innerElements;
+    blockSize = floor(numel(innerElements)/100);
+    for k = 1:100
+        if k ==100
+            idx = innerElements((k-1)*blockSize+1:end);
+        else
+            idx = innerElements((k-1)*blockSize+1:k*blockSize);
         end
+            avIdx = faceNeighborhood4GM(idx,:);
+            sfn(:,idx) = normc(sfn(:,avIdx(:,1))+sfn(:,avIdx(:,2))+sfn(:,avIdx(:,3))+...
+        sfn(:,avIdx(:,4)));
     end
+    sfn = normc(sfn);
 end
+sfn(:,end) = [];
 
 
 
