@@ -1,4 +1,4 @@
-function [surfNormal, surfElements] = surfOuterNormal(elem,node)
+function [surfNormal, surfElements] = surfOuterNormal(elem,node,volSurface,mapping)
 %Finds the outer surface normal on the surface of a mesh.
 %Also finds surface triangle element centers and indices to be used as
 %nodes for surface normal direction field.
@@ -6,14 +6,17 @@ function [surfNormal, surfElements] = surfOuterNormal(elem,node)
 
 %if surface elements are not defined, find them using iso2mesh toolbox
 %volface func
-
-volSurface = volface(elem')';
-permutations = perms(1:4);
-permutations(:,end) = [];
-mapping = zeros(size(volSurface,2),1);
-for i =1:size(permuations,1)
-    [~,lcb] = ismember(volSurface',elem(permutations(i,:),:)','rows');
-    mapping = mapping + lcb;
+if nargin < 4
+    if nargin < 3
+    volSurface = volface(elem')';
+    end
+    permutations = perms(1:4);
+    permutations(:,end) = [];
+    mapping = zeros(size(volSurface,2),1);
+    for i =1:size(permuations,1)
+        [~,lcb] = ismember(volSurface',elem(permutations(i,:),:)','rows');
+        mapping = mapping + lcb;
+    end
 end
 
 if(numel(mapping) ~= size(volSurface,2))
