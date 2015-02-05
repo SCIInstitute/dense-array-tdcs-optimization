@@ -42,6 +42,7 @@ function [newVar,percentLoss] = ...
 
 %% Converting the problem to reduced form
 idx = abs(ca) >= Ith;
+fprintf('%s%d%s\n','The number of remaining electrode set is ',nnz(idx),'.');
 newVar.w = w(idx);
 for i = 1:numel(sQ)
 newVar.sQ{i} = sQ{i}(:,idx);

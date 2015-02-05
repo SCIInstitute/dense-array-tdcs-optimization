@@ -65,6 +65,7 @@ else
         percentLoss,'.');
 end
 w = newVar.w;
+normW = norm(w);
 L = numel(w);
 sQ = newVar.sQ;
 Te = Te(newVar.idx,newVar.idx);
@@ -141,7 +142,7 @@ while ~isempty(activeSet)
     pr = nStates;
     parentelecAssign = dec2base(nStates*r,nStates);
     parentelecAssign(1) = [];
-    fprintf('%-24s\t',parentelecAssign(1:end-1));
+    fprintf('%-36s\t',parentelecAssign(1:end-1));
     for i = 1:pr
         %% Setting the feasible set for the branch
         %  Ft+i = Fr n Ri
@@ -179,7 +180,7 @@ while ~isempty(activeSet)
         dual variable indConstUB
         dual variable powConstV{pp}
         
-        maximize w*x
+        maximize w*x/normW
         
         subject to
         totConstV : norm(y,1) <= 2*tot;
@@ -225,7 +226,7 @@ while ~isempty(activeSet)
             dual variable indConstUB
             dual variable powConstV{pp}
             
-            maximize w*x
+            maximize w*x/normW
             
             subject to
             totConstV : norm(y,1) <= 2*tot;
@@ -248,7 +249,7 @@ while ~isempty(activeSet)
             cvx_end
         end
         
-        zr = cvx_optval;
+        zr = cvx_optval*normW;
         %fprintf('%f\t',zr);
         if zhat < zr
             if numel(unique(round(pot(setdiff(1:L,combinedStates{1}))))) < nStates
