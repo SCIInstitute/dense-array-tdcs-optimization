@@ -65,7 +65,6 @@ else
         percentLoss,'.');
 end
 w = newVar.w;
-normW = norm(w);
 L = numel(w);
 sQ = newVar.sQ;
 Te = Te(newVar.idx,newVar.idx);
@@ -182,7 +181,7 @@ while ~isempty(activeSet)
         dual variable indConstUB
         dual variable powConstV{pp}
         
-        maximize w*x/normW
+        maximize w*x
         
         subject to
         totConstV : norm(y,1) <= 2*tot;
@@ -228,7 +227,7 @@ while ~isempty(activeSet)
             dual variable indConstUB
             dual variable powConstV{pp}
             
-            maximize w*x/normW
+            maximize w*x
             
             subject to
             totConstV : norm(y,1) <= 2*tot;
@@ -251,7 +250,7 @@ while ~isempty(activeSet)
             cvx_end
         end
         
-        zr = cvx_optval*normW;
+        zr = cvx_optval;
         %fprintf('%f\t',zr);
         if zhat < zr
             if numel(unique(round(pot(setdiff(1:L,combinedStates{1}))))) < nStates
