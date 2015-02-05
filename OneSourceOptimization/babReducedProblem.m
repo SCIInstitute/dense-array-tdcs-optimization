@@ -87,6 +87,8 @@ unknownSet = setdiff(1:L,cell2mat(initSet));
 %Ordering of the unknown set for the branch and bound algorithm
 %unknownSetOrder = f(unknownSet,optimalSolution,linearWeights)
 [~,idxOrder] = sort(abs(ca(newVar.idx)));
+%[~,idxOrder] = sort(abs(w),'descend');
+%[~,idxOrder] = sort(abs(w .* ca(newVar.idx)'));
 unknownSetOrder = unknownSet(idxOrder);
 
 %% BRANCH AND BOUND ALGORITHM
