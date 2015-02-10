@@ -72,7 +72,7 @@ currentArray.newVar = newVar;
 %% Find an initial set of states for the electrodes.
 %
 nStates = nSources+1;
-if nStates^numel(newVar.idx) > 2^52
+if nStates^nnz(newVar.idx) > 2^52
     error('dec2base function wont work. Too many branches.');
 end
 if isempty(zhat)
