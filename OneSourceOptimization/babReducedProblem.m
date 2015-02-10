@@ -1,4 +1,4 @@
-function [currentArray] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSources,Ith,zhat)
+function [currentArray] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSources,Ith,zhat,vOrder)
 %% Finds the optimal solution with limited number of current sources
 %  on the dominant electrode set in the original solution using branch
 %  and bound algorithm
@@ -16,6 +16,8 @@ function [currentArray] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSources,Ith,zh
 %           Te          =   matrix linking elec currents to elec potential
 %           nSources    =   number of current sources
 %           Ith         =   Threshold current value to be set to 0
+%           vOrder      =   Vertical ordering of electrodes. Choose: 'high
+%                           margin', 'absolute', 'descend',
 %
 %
 % Output:   x       =   optimal electrode current stimulus pattern
@@ -81,6 +83,11 @@ if isempty(zhat)
     %idx2 = kmeans(1e-3*Te*ca(newVar.idx),nSources+1);
     %calculate zhat.
     [currentArray.x0,zhat] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf);
+    if strcmp(vOrder,'high margin')
+    [Dist,cIdx] = pdist2(c,Te*ca(newVar.idx),'euclidean','Smallest',1);
+    %IDEA: use also the center indices in the node selection process.
+    [~,idxOrder] = sort(Dist,'descend');
+    end
 end
 % IDEA: Ordering of the electrodes for bAb algorithm may be initialized.
 fprintf('%s\n','Initializating clustering of electrodes into states.');
@@ -93,9 +100,13 @@ unknownSet = setdiff(1:L,cell2mat(initSet));
 
 %Ordering of the unknown set for the branch and bound algorithm
 %unknownSetOrder = f(unknownSet,optimalSolution,linearWeights)
+switch vOrder
+    case 'absolute'
 [~,idxOrder] = sort(abs(ca(newVar.idx)));
-%[~,idxOrder] = sort(abs(w),'descend');
+    case 'descend'
+[~,idxOrder] = sort(abs(w),'descend');
 %[~,idxOrder] = sort(abs(w .* ca(newVar.idx)'));
+end
 unknownSetOrder = unknownSet(idxOrder);
 
 %% BRANCH AND BOUND ALGORITHM
