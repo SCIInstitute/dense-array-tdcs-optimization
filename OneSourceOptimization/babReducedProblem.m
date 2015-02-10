@@ -25,7 +25,6 @@ function [currentArray] = babReducedProblem(w,sQ,tot,ind,pmax,Te,nSources,Ith,zh
 %% Reading inputs and checking sizes
 tic;
 L = numel(w);
-Ltemp = L;
 pp = numel(sQ);
 
 if size(ind,1) == L %In case reference electrode bound is not defined
@@ -40,6 +39,8 @@ if nSources > 14
     error('The number of current sources is less than 15.');
 end
 
+%Potential unit is chosen to be V
+
 %% First optimization to get the general unconstrained (i.e. there may be
 %  as many current sources as number of electrodes) solution
 [ca,fval,dv] = optimizationUsingCvxToolbox(w, sQ, tot, ind, pmax);
@@ -48,11 +49,6 @@ currentArray.origCurrent = ca;
 currentArray.origPot = Te * ca;
 currentArray.origObj = fval;
 currentArray.origDV = dv;
-
-
-if nargin <=8
-    zhat = fval*9/10;
-end
 
 %% Reduce the problem size by setting small currents to 0.
 [newVar,percentLoss] = ...
@@ -70,13 +66,24 @@ sQ = newVar.sQ;
 Te = Te(newVar.idx,newVar.idx);
 
 currentArray.newVar = newVar;
+
 %% Find an initial set of states for the electrodes.
 %
-% IDEA: Use maybe k clustering to start the initialization.
+nStates = nSources+1;
+
+if isempty(zhat)
+    % IDEA: Use maybe k clustering to start the initialization.
+    [idxx,c] = kmeans(Te*ca(newVar.idx),nSources);
+    conf{1} = [];
+    for i=2:nStates
+        conf{i} = find(idxx == i-1);
+    end
+    %idx2 = kmeans(1e-3*Te*ca(newVar.idx),nSources+1);
+    %calculate zhat.
+    [currentArray.x0,zhat] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf);
+end
 % IDEA: Ordering of the electrodes for bAb algorithm may be initialized.
 fprintf('%s\n','Initializating clustering of electrodes into states.');
-
-nStates = nSources+1;
 
 initSet = cell(nStates,1);
 for i = 1:nStates
@@ -121,9 +128,8 @@ currentArray.branchBAB = [];
 %Define electrode ordering here or in the loop (if we would like to have
 %different ordering of the importance of the electrodes at each branch
 
-%Main loop of branc and bound. Once finished, all the branches will have
+%% Main loop of branc and bound. Once finished, all the branches will have
 %been fathomed.
-
 while ~isempty(activeSet)
     
     fprintf('%.2f%s\t%d\t%d\t',percentDone,'%',t,numel(activeSet));
@@ -153,127 +159,43 @@ while ~isempty(activeSet)
         % Extract electrode states from the assignment vector and ordering
         elecAssign = dec2base(nStates*r+i-1,nStates);
         elecAssign(1) = [];
-        %fprintf('%s\t\t\t',elecAssign);
-        
-        for j = 1:nStates
-            jStateElec = elecAssign == labelfet(j);
-            combinedStates{j} = [initSet{j} unknownSetOrder(jStateElec)];
-        end
-        nZeros = numel(combinedStates{1});
-        
-        % CVX, CHANGE! (higher the precision, better.)
-        cvx_begin quiet
-        %cvx_precision high
-        cvx_solver sedumi
-        
-        variable u(L-nZeros)
-        
-        expression x(L)
-        expression y(L+1)
-        expression pot(L)
-        x(combinedStates{1}) = 0; % 'Not connected' electrodes
-        x(setdiff(1:L,combinedStates{1})) = u;
-        y = [x; -sum(x)]; %reference elec current = - (sum of the rest)
-        pot = 1e-3*Te * x;
-        
-        dual variable totConstV
-        dual variable indConstLB
-        dual variable indConstUB
-        dual variable powConstV{pp}
-        
-        maximize w*x
-        
-        subject to
-        totConstV : norm(y,1) <= 2*tot;
-        indConstLB : ind(:,1) <= y;
-        indConstUB : y <= ind(:,2);
-        for il = 1:pp
-            powConstV{il} : norm(sQ{il}*x) <= sqrt(pmax(il));
-        end
-        
-        for k = 2:numel(combinedStates)
-            for ks = 2:numel(combinedStates{k})
-                pot(combinedStates{k}(ks)) == pot(combinedStates{k}(1));
+        %Eliminate the branch if it is not sorted.
+        [~,ia,~] = unique(elecAssign);
+        if issorted(ia)
+            %fprintf('%s\t\t\t',elecAssign);
+            
+            for j = 1:nStates
+                jStateElec = elecAssign == labelfet(j);
+                conf{j} = [initSet{j} unknownSetOrder(jStateElec)];
             end
-        end
-        for kk = 3:numel(combinedStates)
-            if ~isempty(combinedStates{kk}) && ~isempty(combinedStates{kk-1})
-                x(combinedStates{kk}(1)) >= x(combinedStates{kk-1}(1))
-            end
-        end
-        
-        cvx_end
-        
-        %currentArray.electrodeCurrents(:,r) = x;
-        if ~strcmp(cvx_status,'Solved')
-            warning('Not solved. Trying different solver.');
-            cvx_begin quiet
-            %cvx_precision high
-            cvx_precision low
-            cvx_solver SDPT3
-            
-            variable u(L-nZeros)
-            
-            expression x(L)
-            expression y(L+1)
-            expression pot(L)
-            x(combinedStates{1}) = 0; % 'Not connected' electrodes
-            x(setdiff(1:L,combinedStates{1})) = u;
-            y = [x; -sum(x)]; %reference elec current = - (sum of the rest)
-            pot = 1e-3*Te * x;
-            
-            dual variable totConstV
-            dual variable indConstLB
-            dual variable indConstUB
-            dual variable powConstV{pp}
-            
-            maximize w*x
-            
-            subject to
-            totConstV : norm(y,1) <= 2*tot;
-            indConstLB : ind(:,1) <= y;
-            indConstUB : y <= ind(:,2);
-            for il = 1:pp
-                powConstV{il} : norm(sQ{il}*x) <= sqrt(pmax(il));
-            end
-            
-            for k = 2:numel(combinedStates)
-                for ks = 2:numel(combinedStates{k})
-                    pot(combinedStates{k}(ks)) == pot(combinedStates{k}(1));
+            [x,zr,pot] = ...
+                solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf);
+            %fprintf('%f\t',zr);
+            if zhat < zr
+                if numel(unique(round(pot(setdiff(1:L,conf{1}))))) < nStates
+                    %calculate percentage. The brach is pruned (best solution
+                    % of that branch is found).
+                    zhat = zr;
+                    fprintf('%s\t','Z');
+                    currentArray.xhatBAB(:,end+1) = x;
+                    currentArray.zhatBAB(end+1) = zhat;
+                    currentArray.tBAB(end+1) = t;
+                    currentArray.branchBAB{end+1} = elecAssign;
+                elseif numel(elecAssign) < numel(unknownSetOrder)
+                    %we add the children branch to the active set
+                    activeSet(end+1) = [nStates*r+i-1];
+                    z(end+1) = zr;
+                    fprintf('%s\t','B');
+                else
+                    fprintf('%s\t','L');
                 end
-            end
-            for kk = 3:numel(combinedStates)
-                if ~isempty(combinedStates{kk}) && ~isempty(combinedStates{kk-1})
-                    x(combinedStates{kk}(1)) >= x(combinedStates{kk-1}(1))
-                end
-            end
-            cvx_end
-        end
-        
-        zr = cvx_optval;
-        %fprintf('%f\t',zr);
-        if zhat < zr
-            if numel(unique(round(pot(setdiff(1:L,combinedStates{1}))))) < nStates
-                %calculate percentage. The brach is pruned (best solution
-                % of that branch is found).
-                zhat = zr;
-                fprintf('%s\t','Z');
-                currentArray.xhatBAB(:,end+1) = x; 
-                currentArray.zhatBAB(end+1) = zhat;
-                currentArray.tBAB(end+1) = t;
-                currentArray.branchBAB{end+1} = elecAssign;
-            elseif numel(elecAssign) < numel(unknownSetOrder)
-                %we add the children branch to the active set
-                activeSet(end+1) = [nStates*r+i-1];
-                z(end+1) = zr;
-                fprintf('%s\t','B');
             else
-                fprintf('%s\t','L');
+                %calculate percentage. The branch is pruned.
+                percentDone = percentDone +100*(nStates^-numel(elecAssign));
+                fprintf('%s\t','F');
             end
         else
-            %calculate percentage. The branch is pruned.
-            percentDone = percentDone + 100*(nStates^-numel(elecAssign));
-            fprintf('%s\t','F');
+            percentDone = percentDone +100*(nStates^-numel(elecAssign));
         end
     end
     t = t + pr;
@@ -285,4 +207,120 @@ end
 currentArray.t = t;
 currentArray.convTime = toc;
 currentArray.avgActSetSize = totalactSetSize/t*pr;
+currentArray.percentLoss = 100*(currentArray.origObj-zhat)/currentArray.origObj;
 fprintf('%s%f%s\n','Limited current sources optimization is solved in ',toc,' seconds.');
+end
+
+function [currentArray,fval,pot] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf)
+% Solves the relaxed problem on the electrode set ('not connected' set excluded')
+nZeros = numel(conf{1});
+L = numel(w);
+normW = norm(w);
+w = w/normW;
+Te = Te/normW;
+
+%% CVX, high precision, sedumi as solver
+cvx_begin quiet
+cvx_precision high
+cvx_solver sedumi
+
+variable u(L-nZeros)
+
+expression x(L)
+x(conf{1}) = 0;
+x(setdiff(1:L,conf{1})) = u;
+expression y(L+1)
+expression pot(L)
+y = [x; -sum(x)];
+pot = Te * x;
+
+maximize w*x
+
+subject to
+norm(y,1) <= 2*tot;
+ind(:,1) <= y;
+y <= ind(:,2);
+for pp = 1:numel(sQ)
+    norm(sQ{pp}*x) <= sqrt(pmax(pp));
+end
+
+for k = 2:numel(conf)
+    for ks = 2:numel(conf{k})
+        pot(conf{k}(ks)) == pot(conf{k}(1));
+    end
+end
+cvx_end
+
+%% Not solved, medium precision is tried
+if ~strcmp(cvx_status,'Solved')
+    fprintf('%s','.');
+    cvx_begin quiet
+    cvx_solver sedumi
+    
+    variable u(L-nZeros)
+    
+    expression x(L)
+    x(conf{1}) = 0;
+    x(setdiff(1:L,conf{1})) = u;
+    expression y(L+1)
+    expression pot(L)
+    y = [x; -sum(x)]; %reference elec current = - (sum of the rest)
+    pot = Te * x;
+    
+    maximize w*x
+    
+    subject to
+    norm(y,1) <= 2*tot;
+    ind(:,1) <= y;
+    y <= ind(:,2);
+    for pp=1:numel(sQ)
+        norm(sQ{pp}*x) <= sqrt(pmax(pp));
+    end
+    
+    for k = 2:numel(conf)
+        for ks = 2:numel(conf{k})
+            pot(conf{k}(ks)) == pot(conf{k}(1));
+        end
+    end
+    cvx_end
+end
+
+%% Still not solved, SDPT3 is tried with low precision
+if ~strcmp(cvx_status,'Solved')
+    fprintf('%s\t','.');
+    cvx_begin quiet
+    cvx_precision low
+    cvx_solver SDPT3
+    variable u(L-nZeros)
+    
+    expression x(L)
+    x(conf{1}) = 0;
+    x(setdiff(1:L,conf{1})) = u;
+    expression y(L+1)
+    expression pot(L)
+    y = [x; -sum(x)]; %reference elec current = - (sum of the rest)
+    pot = Te * x;
+    
+    maximize w*x
+    
+    subject to
+    norm(y,1) <= 2*tot;
+    ind(:,1) <= y;
+    y <= ind(:,2);
+    for pp=1:numel(sQ)
+        norm(sQ{pp}*x) <= sqrt(pmax(pp));
+    end
+    
+    for k = 2:numel(conf)
+        for ks = 2:numel(conf{k})
+            pot(conf{k}(ks)) == pot(conf{k}(1));
+        end
+    end
+    cvx_end
+end
+if ~strcmp(cvx_status,'Solved')
+    warning('Not solved.');
+end
+fval = normW*cvx_optval;
+currentArray = x;
+end
