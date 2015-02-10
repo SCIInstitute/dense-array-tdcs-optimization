@@ -72,7 +72,9 @@ currentArray.newVar = newVar;
 %% Find an initial set of states for the electrodes.
 %
 nStates = nSources+1;
-
+if nStates^numel(newVar.idx) > 2^52
+    error('dec2base function wont work. Too many branches.');
+end
 if isempty(zhat)
     % IDEA: Use maybe k clustering to start the initialization.
     [idxx,c] = kmeans(Te*ca(newVar.idx),nSources);
