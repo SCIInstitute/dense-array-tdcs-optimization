@@ -107,7 +107,8 @@ switch vOrder
 [~,idxOrder] = sort(abs(ca(newVar.idx)));
     case 'descend'
 [~,idxOrder] = sort(abs(w),'descend');
-%[~,idxOrder] = sort(abs(w .* ca(newVar.idx)'));
+    case 'contribution'
+[~,idxOrder] = sort(abs(w .* ca(newVar.idx)'));
 end
 unknownSetOrder = unknownSet(idxOrder);
 
