@@ -72,9 +72,7 @@ currentArray.newVar = newVar;
 %% Find an initial set of states for the electrodes.
 %
 nStates = nSources+1;
-if nStates^nnz(newVar.idx) > 2^52
-    error('dec2base function wont work. Too many branches.');
-end
+
 if isempty(zhat)
     % IDEA: Use maybe k clustering to start the initialization.
     [idxx,c] = kmeans(Te*ca(newVar.idx),nSources);
@@ -128,7 +126,7 @@ unknownSetOrder = unknownSet(idxOrder);
 %Initialization
 clear x;
 %[~,xhat,zhat,~] = babOne(w,sQ,tot,ind,pmax,Te);
-activeSet(1) = 1;
+activeSet{1} = 1;
 %zhat = -inf;
 z(1) = zhat;
 t = 0;
@@ -155,15 +153,23 @@ while ~isempty(activeSet)
     %Choose the next branch. CHANGE!
     %[~,idx] = max(z);
     idx = numel(activeSet);
-    r = activeSet(idx);
-    activeSet(idx) = [];
+    r = activeSet{:,idx};
+    activeSet(:,idx) = [];
     z(idx) = [];
     
     %Determination of p(r) and branching: Fr = R1 U R2 U ... U Rpr. CHANGE!
     pr = nStates;
-    parentelecAssign = dec2base(nStates*r,nStates);
-    parentelecAssign(1) = [];
-    fprintf('%-36s\t',parentelecAssign(1:end-1));
+    if nStates*r+pr-1 > 2^52
+        parentelecAssign = dec2baseInfDigits(nStates*r,nStates);
+    elseif numel(r) >= 2
+        %When the branch idx is too high,i.e. higher than 2^52 already.
+        for ir = 1:numel(r)
+            parentelecAssign = [dec2base(r(ir),nStates) parentelecAssign]
+        end
+    else
+        parentelecAssign = dec2base(r,nStates);
+    end
+    fprintf('%-32s\t',parentelecAssign(2:end-1));
     for i = 1:pr
         %% Setting the feasible set for the branch
         %  Ft+i = Fr n Ri
@@ -171,20 +177,17 @@ while ~isempty(activeSet)
         %% Calculating the xt+i, zt+i for the branch
         % Assign electrode states according to branch number
         % Extract electrode states from the assignment vector and ordering
-        elecAssign = dec2base(nStates*r+i-1,nStates);
+        elecAssign = [parentelecAssign labelfet(i)];
         elecAssign(1) = [];
         %Eliminate the branch if it is not sorted.
-        [~,ia,~] = unique(elecAssign);
-        if issorted(ia)
-            %fprintf('%s\t\t\t',elecAssign);
-            
+        [~,ia,~] = unique(elecAssign(elecAssign ~= '0'));
+        if issorted(ia)            
             for j = 1:nStates
                 jStateElec = elecAssign == labelfet(j);
                 conf{j} = [initSet{j} unknownSetOrder(jStateElec)];
             end
-            [x,zr,pot] = ...
-                solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf);
-            %fprintf('%f\t',zr);
+            [x,zr,pot] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf);
+            
             if zhat < zr
                 if numel(unique(round(pot(setdiff(1:L,conf{1}))))) < nStates
                     %calculate percentage. The brach is pruned (best solution
@@ -197,7 +200,13 @@ while ~isempty(activeSet)
                     currentArray.branchBAB{end+1} = elecAssign;
                 elseif numel(elecAssign) < numel(unknownSetOrder)
                     %we add the children branch to the active set
-                    activeSet(end+1) = [nStates*r+i-1];
+                    if nStates*r+i-1 > 2^52
+                        %Add how to create 2d idx.
+                    elseif numel(r) >= 2
+                        %Add how to find next activeSet idx.
+                    else
+                    activeSet{end+1} = nStates*r+i-1;
+                    end
                     z(end+1) = zr;
                     fprintf('%s\t','B');
                 else
@@ -210,6 +219,7 @@ while ~isempty(activeSet)
             end
         else
             percentDone = percentDone +100*(nStates^-numel(elecAssign));
+            fprintf('%s\t','S');
         end
     end
     t = t + pr;
@@ -301,7 +311,7 @@ end
 
 %% Still not solved, SDPT3 is tried with low precision
 if ~strcmp(cvx_status,'Solved')
-    fprintf('%s\t','.');
+    fprintf('%s','.');
     cvx_begin quiet
     cvx_precision low
     cvx_solver SDPT3
@@ -337,4 +347,12 @@ if ~strcmp(cvx_status,'Solved')
 end
 fval = normW*cvx_optval;
 currentArray = x;
+end
+
+function [elecAssign,r,chunkSize] = dec2baseInfDigits(nodeIdx,nStates)
+elecAssign = '';
+while nodeIdx ~= 0
+elecAssign = [num2str(rem(nodeIdx,nStates)) elecAssign];
+nodeIdx = floor(nodeIdx/nStates);
+end
 end
