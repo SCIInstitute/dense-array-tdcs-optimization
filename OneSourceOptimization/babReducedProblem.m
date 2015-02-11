@@ -37,8 +37,8 @@ if size(ind,2) == 1 %Lower bound = - Upper bound
     ind = [-ind ind];
 end
 
-if nSources > 14
-    error('The number of current sources is less than 15.');
+if nSources > 20
+    error('The number of current sources is less than 21.');
 end
 
 %Potential unit is chosen to be V
@@ -75,16 +75,37 @@ nStates = nSources+1;
 
 if isempty(zhat)
     % IDEA: Use maybe k clustering to start the initialization.
-    [idxx,c] = kmeans(Te*ca(newVar.idx),nSources);
-    conf{1} = [];
+    [idx0,c0] = kmeans(Te*ca(newVar.idx),nSources);
+    conf0{1} = [];
     for i=2:nStates
-        conf{i} = find(idxx == i-1);
+        conf0{i} = find(idx0 == i-1);
     end
     %idx2 = kmeans(1e-3*Te*ca(newVar.idx),nSources+1);
     %calculate zhat.
-    [currentArray.x0,zhat] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf);
+    [currentArray.x0,zhat] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf0);
+    pots2 = Te*ca(newVar.idx);
+    bigCurrents = ca(newVar.idx) >= 10*Ith;
+    bigCurrentIdx = find(bigCurrents == 1);
+    [idx1,c1] = kmeans(pots2(bigCurrents),nSources);
+    conf1{1} = find(bigCurrents==0);
+    for i=2:nStates
+        conf1{i} = bigCurrentIdx(find(idx1 == i-1));
+    end
+    [currentArray.x1,zhat1] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf1);
+    if zhat1 > zhat
+        %fprintf('%s\n','Using not connected in the initialization is better.');
+        %fprintf('%s%f%s\n','Percentage increase for the initialization is ',100*(zhat1-zhat)/zhat,'.');
+        zhat = zhat1;
+        disp(zhat1);
+    end
+    
     if strcmp(vOrder,'high margin')
-    [Dist,cIdx] = pdist2(c,Te*ca(newVar.idx),'euclidean','Smallest',1);
+    [Dist,cIdx] = pdist2(c0,Te*ca(newVar.idx),'euclidean','Smallest',1);
+    %IDEA: use also the center indices in the node selection process.
+    [~,idxOrder] = sort(Dist,'descend');
+    end
+    if strcmp(vOrder,'high margin') && zhat1 == zhat
+    [Dist,cIdx] = pdist2(c1,Te*ca(newVar.idx),'euclidean','Smallest',1);
     %IDEA: use also the center indices in the node selection process.
     [~,idxOrder] = sort(Dist,'descend');
     end
@@ -126,12 +147,12 @@ unknownSetOrder = unknownSet(idxOrder);
 %Initialization
 clear x;
 %[~,xhat,zhat,~] = babOne(w,sQ,tot,ind,pmax,Te);
-activeSet{1} = 1;
+activeSet{1} = '';
 %zhat = -inf;
 z(1) = zhat;
 t = 0;
 totalactSetSize = 1;
-labelfet = '0123456789ABCDE';
+labelfet = '0123456789ABCDEFGHIJK';
 percentDone = 0;
 currentArray.xhatBAB = [];
 currentArray.zhatBAB = [];
@@ -150,26 +171,26 @@ while ~isempty(activeSet)
     %to calculate the ratio of finished branches vs total
     
     
-    %Choose the next branch. CHANGE!
+    %Choose the next branch to check. CHANGE!
     %[~,idx] = max(z);
     idx = numel(activeSet);
-    r = activeSet{:,idx};
-    activeSet(:,idx) = [];
+    nextBranch = activeSet{idx};
+    activeSet(idx) = [];
     z(idx) = [];
     
     %Determination of p(r) and branching: Fr = R1 U R2 U ... U Rpr. CHANGE!
     pr = nStates;
-    if nStates*r+pr-1 > 2^52
-        parentelecAssign = dec2baseInfDigits(nStates*r,nStates);
-    elseif numel(r) >= 2
-        %When the branch idx is too high,i.e. higher than 2^52 already.
-        for ir = 1:numel(r)
-            parentelecAssign = [dec2base(r(ir),nStates) parentelecAssign]
-        end
-    else
-        parentelecAssign = dec2base(r,nStates);
-    end
-    fprintf('%-32s\t',parentelecAssign(2:end-1));
+%     if nStates*nextBranch+pr-1 > 2^52
+%         parentelecAssign = dec2baseInfDigits(nStates*nextBranch,nStates);
+%     elseif numel(nextBranch) >= 2
+%         %When the branch idx is too high,i.e. higher than 2^52 already.
+%         for ir = 1:numel(nextBranch)
+%             parentelecAssign = [dec2base(nextBranch(ir),nStates) parentelecAssign];
+%         end
+%     else
+%         parentelecAssign = dec2base(nextBranch,nStates);
+%     end
+    fprintf('%-36s\t', nextBranch);
     for i = 1:pr
         %% Setting the feasible set for the branch
         %  Ft+i = Fr n Ri
@@ -177,8 +198,7 @@ while ~isempty(activeSet)
         %% Calculating the xt+i, zt+i for the branch
         % Assign electrode states according to branch number
         % Extract electrode states from the assignment vector and ordering
-        elecAssign = [parentelecAssign labelfet(i)];
-        elecAssign(1) = [];
+        elecAssign = [nextBranch labelfet(i)];
         %Eliminate the branch if it is not sorted.
         [~,ia,~] = unique(elecAssign(elecAssign ~= '0'));
         if issorted(ia)            
@@ -200,13 +220,14 @@ while ~isempty(activeSet)
                     currentArray.branchBAB{end+1} = elecAssign;
                 elseif numel(elecAssign) < numel(unknownSetOrder)
                     %we add the children branch to the active set
-                    if nStates*r+i-1 > 2^52
-                        %Add how to create 2d idx.
-                    elseif numel(r) >= 2
-                        %Add how to find next activeSet idx.
-                    else
-                    activeSet{end+1} = nStates*r+i-1;
-                    end
+%                     if nStates*nextBranch+i-1 > 2^52
+%                         %Add how to create 2d idx.
+%                     elseif numel(nextBranch) >= 2
+%                         %Add how to find next activeSet idx.
+%                     else
+%                     activeSet{end+1} = nStates*nextBranch+i-1;
+%                     end
+                    activeSet{end+1} = elecAssign;
                     z(end+1) = zr;
                     fprintf('%s\t','B');
                 else
@@ -349,10 +370,10 @@ fval = normW*cvx_optval;
 currentArray = x;
 end
 
-function [elecAssign,r,chunkSize] = dec2baseInfDigits(nodeIdx,nStates)
-elecAssign = '';
-while nodeIdx ~= 0
-elecAssign = [num2str(rem(nodeIdx,nStates)) elecAssign];
-nodeIdx = floor(nodeIdx/nStates);
-end
-end
+% function [elecAssign,r,chunkSize] = dec2baseInfDigits(nodeIdx,nStates)
+% elecAssign = '';
+% while nodeIdx ~= 0
+% elecAssign = [num2str(rem(nodeIdx,nStates)) elecAssign];
+% nodeIdx = floor(nodeIdx/nStates);
+% end
+% end
