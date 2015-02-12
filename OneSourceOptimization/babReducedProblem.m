@@ -179,7 +179,7 @@ while ~isempty(activeSet)
     z(idx) = [];
     
     %Determination of p(r) and branching: Fr = R1 U R2 U ... U Rpr. CHANGE!
-    pr = nStates;
+    pr = max(2,min(numel(unique(nextBranch(nextBranch ~= '0')))+2,nStates));
 %     if nStates*nextBranch+pr-1 > 2^52
 %         parentelecAssign = dec2baseInfDigits(nStates*nextBranch,nStates);
 %     elseif numel(nextBranch) >= 2
@@ -266,7 +266,7 @@ Te = Te/normW;
 
 %% CVX, high precision, sedumi as solver
 cvx_begin quiet
-cvx_precision high
+%cvx_precision high
 cvx_solver sedumi
 
 variable u(L-nZeros)
