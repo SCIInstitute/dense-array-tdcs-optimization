@@ -47,7 +47,9 @@ tic;
 if size(G,2) ~= size(T,1) || ~isequal(numel(ROI),size(avoidRegions,2),numel(elemVolumes))
     error('Mismatch in matrix sizes.');
 end
-
+if size(desiredDirection,2) == numel(ROI)
+  desiredDirection = desiredDirection(:,ROI==1);
+end
 % expanded ROI,expanded notRoi indices are needed since by convention we chose
 % current density vector to be size of (3 #elements) x 1
 % Current density = [x1; y1; z1; x2; y2; z2; ... ; xM; yM; zM]
@@ -76,7 +78,7 @@ S = s2NormIntegrationoverNotROI(avoidRegions,elemVolumes);
 
 %% Combination of matrices
 %We first multiply sparse matrices.
-wTtemp = a * G(expandedROI,:); %intermadiate stepa
+wTtemp = a * G(expandedROI,:); %intermadiate step
 clear expandedROI a;
 %We then multiply with full matrix T.
 w = wTtemp * T;
@@ -120,7 +122,6 @@ function w = weightedInnerProductSumOverROI(desiredDirection,ROIelemVolumes)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 nZ = numel(ROIelemVolumes); % number of ROI elements
-
 
 if ~isequal(size(desiredDirection),[3 nZ]) && ~isequal(size(desiredDirection),[3 1])
     error('Mismatch between ROI size and desired modulation direction size.');

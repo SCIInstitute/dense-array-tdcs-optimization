@@ -35,12 +35,16 @@ function currentOptimization4tDCS(mesh,T,conductivity,directions,ROIs,avoidRegio
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 str2 = char(date); 
 if(nargin <= 9)
-    [G,V] = anisomappingFromNodePotentialsToCurrentDensity(mesh,conductivity);
-    save -v7.3 G.mat G
-    save -v7.3 V.mat V
+    [G,V] = calculateGradientsIsotropicMesh(mesh,conductivity);
+    save -v7.3 sigmaGradV.mat G
+    save -v7.3 vole.mat V
 end
 
 M = size(mesh.cell,2);
+if isempty(avoidRegions)
+    avoidRegions = false(1,M);
+    avoidRegions(mesh.field == 4 | mesh.field ==5) = 1;
+end
 if(size(avoidRegions,2) ~= M)
     avoidRegions = avoidRegions';
 end
@@ -61,7 +65,9 @@ for r = 1:size(ROIs,1)
     ROIr = ROIs(r,:);
     avoidRegionR(:,ROIr ==1) = 0;
     if isempty(directions)
-        desiredDir4ROIr{1} = surfaceNormalInterpolation(mesh,ROIr);
+        sfn = corticalSurfaceNormalDirection(mesh,ROIr);
+        save('surfaceNormalInfo','sfn');
+        desiredDir4ROIr{1} = sfn.ROIsurfaceNormalD; 
     else
     desiredDir4ROIr = directions{r};
     end
@@ -82,11 +88,13 @@ for r = 1:size(ROIs,1)
                         dVect = G * potential;
                         potential = potential';
                         currentIntensity = sqrt(sum(reshape(dVect.*dVect,3,[])));
+                        logIntensity = log2(currentIntensity);
                         currentDensity = reshape(dVect,3,[]);
                         save([pwd '/' str2  '/roi' num2str(r) '/fDual'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'fval','dualV');
                         save([pwd '/' str2  '/roi' num2str(r) '/elecCurrent'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentArrayReferenceAdded');
                         save([pwd '/' str2  '/roi' num2str(r) '/potential'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'potential');
                         save([pwd '/' str2  '/roi' num2str(r) '/intensity'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentIntensity');
+                        save([pwd '/' str2  '/roi' num2str(r) '/logintensity'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'logIntensity');
                         save([pwd '/' str2  '/roi' num2str(r) '/density'  num2str(d) num2str(ss) num2str(si) num2str(pi) '.mat'],'currentDensity');
                     end
                 end

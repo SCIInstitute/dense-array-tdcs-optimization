@@ -22,7 +22,7 @@ L = numel(w);
 
 %bound
 smax = 1;
-smaxi = 0.05:0.005:0.50;
+smaxi = 0.50:0.005:0.80;
 pmax = 10.^(3.4:-0.05:1);
 
 %initialization
@@ -54,6 +54,6 @@ for ss = 1:size(smax,2)
     end
 end
 
-save([pwd 'boundInformation.mat'],'w','sqrtQ','field','stats','fval','dualVariables','smax','smaxi','pmax'); 
+save([pwd '/boundInformation2.mat'],'w','sqrtQ','field','stats','fval','dualVariables','smax','smaxi','pmax'); 
 
 

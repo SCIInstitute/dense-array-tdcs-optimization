@@ -66,7 +66,7 @@ while (numel(doneIndices) < size(graymatterRow,1)+1)
     sfn(:,newSetIndices) = normc(sfn(:,avIdx(:,1))+sfn(:,avIdx(:,2))+sfn(:,avIdx(:,3))+...
         sfn(:,avIdx(:,4)));
     sfn = normc(sfn);
-    doneIndices = [doneIndices newSetIndices'];
+    doneIndices = [doneIndices; newSetIndices];
     disp(num2str(numel(doneIndices)));
 end
 %Filling 0's in a matrix
