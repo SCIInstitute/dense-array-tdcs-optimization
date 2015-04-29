@@ -93,7 +93,10 @@ for i = 1:numOfAvoid
     %Then full terms.
     Qtemp2 = T' * Qtemp * T;
     %Cholesky factor for reasons explained above
-    sqrtQ{i} = chol(Qtemp2);
+    [sqrtQ{i},p] = chol(Qtemp2);
+    if p>0
+        sqrtQ{i} = chol(Qtemp2+1e-9*eye(size(Qtemp2,1),size(Qtemp2,1)));
+    end
 end
 
 fprintf('%s%f%s\n','sqrtQ is calculated in ',toc,' seconds.');

@@ -126,7 +126,7 @@ end
 
 electrodeCurrents = x;
 fval = cvx_optval;
-dualVariables = [totConstV; indConstLB; indConstUB; cell2mat(powConstV')]; 
+dualVariables = [totConstV; indConstLB; indConstUB; cell2mat(powConstV)]; 
 
 fprintf('%s%f%s\n','Electrode current optimization is solved in ',toc,' seconds.');
 end
