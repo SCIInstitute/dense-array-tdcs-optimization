@@ -24,7 +24,7 @@ function [I, fVal, dV] = weightedLeastSquaresTotalIndividual(Q, b, tot, ind)
 %           to speed up the convergence. This is the reason behind using
 %           Cholesky factor of the quadratic matrix instead of the matrix
 %           itself. minimize(x' * Q * x + b' * x) is equivalent to
-%           minimize( norm(chol(Q) * (x - m), 2 ) ) where m = Q\v.
+%           minimize( norm(chol(Q) * (x + m), 2 ) ) where m = 2*Q'\v.
 
 tic;
 L = size(Q,2); %number of electrodes

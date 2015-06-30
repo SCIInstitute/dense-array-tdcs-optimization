@@ -69,7 +69,7 @@ Yw = diag(tmap) * E0; %Yw
 k = numel(W) / sum(W.^2);
 
 Q = k * (Ew' * Ew) ;
-b = k * (Yw' * Ew)';
+b = -2 * k * (Yw' * Ew)';
 
 
 
