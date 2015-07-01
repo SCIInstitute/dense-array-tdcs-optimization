@@ -19,7 +19,6 @@ function [Q,b] = findQuadraticLinearTerms4Objective(mapV2E, T, roi, surfNormal, 
 %
 % Output:   Q           = quadratic term in the objective
 %           b           = linear coefficients in the objective
-%
 
 M = size(mapV2E,1)/3; % # elements
 N = size(mapV2E,2); % # nodes
@@ -65,7 +64,8 @@ surfNormalInCells = mat2cell(surfNormal',ones(size(surfNormal,2),1),3);
 mapOntoSurfNormal = sparse(blkdiag(surfNormalInCells{:}));
 
 %normal component of electric field (tmap weighted) 
-Ew = (diag(W) * mapOntoSurfNormal * mapV2E(eRoiIdx,:)) * T;
+Ewtemp = (sparse(diag(W)) * mapOntoSurfNormal * mapV2E(eRoiIdx,:));
+Ew = Ewtemp * T;
 
 %desired normal component of electric field (tmap weighted)
 Yw = diag(tmap) * E0; %Yw
