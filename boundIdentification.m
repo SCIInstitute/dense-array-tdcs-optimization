@@ -2,6 +2,7 @@ function [stats,fval,dualVariables] = boundIdentification(w,sqrtQ,G,T,field,roi,
 %ANALYSIS OF THE CONSTRAINT EFFECTS ON THE OBJECTIVE FUNCTION AND OTHER
 %STATISTICS
 %Written by: Seyhmus Guler 3/9/14
+%Last edit: 4/29/15
 
 %INPUTS
     %w: Linear coefficients for the objective function
@@ -12,6 +13,8 @@ function [stats,fval,dualVariables] = boundIdentification(w,sqrtQ,G,T,field,roi,
     %T: Lead field matrix. Matrix linking electrode currents to potential
     %in the domain. 
     %field: field vector showing the element labels.
+    %roi: roi labels
+    %vole: element volumes
 %OUTPUTS
     %stats: Statistics about the current intensity found by optimization
     %fval: objective function values for optimized electrode currents
@@ -21,9 +24,14 @@ function [stats,fval,dualVariables] = boundIdentification(w,sqrtQ,G,T,field,roi,
 L = numel(w);
 
 %bound
-smax = 1;
-smaxi = 0.50:0.005:0.80;
-pmax = 10.^(3.4:-0.05:1);
+%smax = 1;
+%smaxi = 0.50:0.005:0.80;
+%pmax = 10.^(3.4:-0.05:1);
+
+%bounds
+tot = 1;
+ind = 0.10:0.01:0.30;
+pmax(:,1) = 
 
 %initialization
 fval = zeros(size(smax,2),size(smaxi,2),size(pmax,2));

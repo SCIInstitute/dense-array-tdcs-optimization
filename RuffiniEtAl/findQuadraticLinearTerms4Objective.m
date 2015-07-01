@@ -43,9 +43,13 @@ end
 if isempty(tMin)
     tMin = 2;
 end
-
+if size(E0,2) == M
+    E0 = E0';
+end
 if numel(E0) == M
     E0 = E0(roi==1);
+elseif numel(E0) == 1
+    E0 = E0 * ones(nnz(roi),1);
 end
     
 

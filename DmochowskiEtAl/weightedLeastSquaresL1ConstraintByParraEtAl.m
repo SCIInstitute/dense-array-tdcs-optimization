@@ -1,4 +1,4 @@
-function [I, fVal, dV] = weightedLeastSquaresL1ConstraintByParraEtAl(sqrtQ_weighted, v_weighted, ind)
+function [I, fVal, dV] = weightedLeastSquaresL1ConstraintByParraEtAl(Q_weighted, v_weighted, ind)
 % Weighted least squares solution to hd_tDCS electrode current stimulus 
 % optimization with L1 constraint.
 %
@@ -25,9 +25,15 @@ function [I, fVal, dV] = weightedLeastSquaresL1ConstraintByParraEtAl(sqrtQ_weigh
 %           minimize( norm(chol(Q) * (x - m), 2 ) ) where m = Q\v.
 
 tic;
+
+%Cholesky factor for reasons explained above
+[sqrtQ_weighted,p] = chol(Q_weighted);
+if p>0
+    sqrtQ_weighted = chol(Q_weighted + 1e-9*eye(size(Q_weighted,1)));
+end
+
 L = size(sqrtQ_weighted,2); %number of electrodes
-Q = sqrtQ_weighted' * sqrtQ_weighted;
-m = Q\v_weighted;
+m = Q_weighted\v_weighted;
 
 if size(ind,1) == L
     ind(L+1,:) = ind(end,:);

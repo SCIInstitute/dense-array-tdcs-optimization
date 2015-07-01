@@ -1,4 +1,4 @@
-function [I, fVal, dV] = weightedLeastSquaresConstrainedByParraEtAl(sqrtQ_weighted, v_weighted, tot)
+function [I, fVal, dV] = weightedLeastSquaresConstrainedByParraEtAl(Q_weighted, v_weighted, tot)
 % Weighted least squares solution to hd_tDCS electrode current stimulus 
 % optimization with total current constraint.
 %
@@ -39,9 +39,12 @@ function [I, fVal, dV] = weightedLeastSquaresConstrainedByParraEtAl(sqrtQ_weight
 %           norm ( sqrtQ * (x - inv(Q) * v)).
 
 tic;
+[sqrtQ_weighted,p] = chol(Q_weighted);
+if p>0
+    sqrtQ_weighted = chol(Q_weighted + 1e-9*eye(size(Q_weighted,1)));
+end
 L = size(sqrtQ_weighted,2); %number of electrodes
-Q = sqrtQ_weighted' * sqrtQ_weighted;
-m = Q\v_weighted;
+m = Q_weighted\v_weighted;
 
 cvx_begin quiet
 cvx_solver sedumi

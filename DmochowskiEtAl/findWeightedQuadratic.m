@@ -1,4 +1,4 @@
-function [sqrtQ_weighted,v_weighted] = findWeightedQuadratic(Q_ROI,Q_nonROI,v,k,numOfROINodes,numOfnonROINodes)
+function [Q_weighted,v_weighted] = findWeightedQuadratic(Q_ROI,Q_nonROI,v,k,numOfROINodes,numOfnonROINodes)
 % Weights the contribution of ROI and nonROI regions on the objective.
 %
 % Synopsis: [sqrtQ_weighted, v_weighted] = findWeightedQuadratic(Q_ROI, ...
@@ -24,6 +24,5 @@ w = k*numOfnonROINodes/numOfROINodes;
 wC = 1/(w+1);
 w = w/(w+1);
 
-Q_brain_weighted = w * Q_ROI + wC * Q_nonROI;
-sqrtQ_weighted = chol(Q_brain_weighted);
+Q_weighted = w * Q_ROI + wC * Q_nonROI;
 v_weighted = w * v;

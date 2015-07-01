@@ -1,4 +1,4 @@
-function [ w, sqrtQ ]  = linearQuadraticCoefficientCalculation(ROI, avoidRegions, desiredDirection, T, G, elemVolumes)
+function [ w, Q ]  = linearQuadraticCoefficientCalculation(ROI, avoidRegions, desiredDirection, T, G, elemVolumes)
 %% Calculates the linear and quadratic terms for the objective function and
 % power constraint of hd-tDCS electrode current optimization. The objective
 % function is linear and power constraint is quadratic functions of electrode
@@ -6,12 +6,6 @@ function [ w, sqrtQ ]  = linearQuadraticCoefficientCalculation(ROI, avoidRegions
 %
 % Written by: Seyhmus Guler 4/29/14.
 %
-% Note: For the quadratic term, we output Cholesky factor of the matrix in order
-% to speed up things at the optimization end. (CVX converts quadratic
-% constraints ( x' * Q * x <= s) to norm constraints first ( norm(square_root(Q)
-% * x) <= square_root(s) ) and then solves the (dual) problem. Instead of
-% giving it a quadratic constraint, we give the equivalent norm constraint
-% by taking square root (Cholesky factor in this case) of the matrix Q.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % M := # Elements in the mesh.
@@ -86,17 +80,12 @@ clear wTtemp;
 fprintf('%s%f%s\n','w is calculated in ',toc,' seconds.');
 
 %
-sqrtQ = cell(1,numOfAvoid);
+Q = cell(1,numOfAvoid);
 for i = 1:numOfAvoid
     %First sparse terms.
     Qtemp = G(expandedNotROI{i},:)' * S{i} * G(expandedNotROI{i},:);
     %Then full terms.
-    Qtemp2 = T' * Qtemp * T;
-    %Cholesky factor for reasons explained above
-    [sqrtQ{i},p] = chol(Qtemp2);
-    if p>0
-        sqrtQ{i} = chol(Qtemp2+1e-9*eye(size(Qtemp2,1),size(Qtemp2,1)));
-    end
+    Q{i} = T' * Qtemp * T;
 end
 
 fprintf('%s%f%s\n','sqrtQ is calculated in ',toc,' seconds.');

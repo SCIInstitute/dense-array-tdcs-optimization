@@ -1,4 +1,4 @@
-function [electrodeCurrents,fval,dualVariables] = optimizationUsingCvxToolbox(w,sqrtQ,tot,ind,pmax)
+function [electrodeCurrents,fval,dualVariables] = optimizationUsingCvxToolbox(w,Q,tot,ind,pmax)
 %% FINDS THE BEST ELECTRODE CURRENT STIMULUS CONFIGURATION USING CVX TOOLKIT
 % IN ADDITION IT FINDS THE FUNCTION VALUE AT SOLUTION AND DUAL VARIABLES (FOR ACTIVE SET 
 % INVESTIGATIN PURPOSES) IF REQUIRED.
@@ -24,8 +24,16 @@ function [electrodeCurrents,fval,dualVariables] = optimizationUsingCvxToolbox(w,
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 L = numel(w); %Number of electrodes
-pp = numel(sqrtQ); % Number of power constraints
+pp = numel(Q); % Number of power constraints
 
+sqrtQ = cell(1,pp);
+for i=1:pp
+    %Cholesky factor for reasons explained above
+    [sqrtQ{i},p] = chol(Q{i});
+    if p>0
+        sqrtQ{i} = chol(Q{i}+1e-9*eye(size(Q{i},1)));
+    end
+end
 if size(ind,1) == L %In case reference electrode bound is not defined
     ind(L+1,:) = ind(end,:); %Make ref elec have the same const as last one
 end

@@ -73,14 +73,14 @@ for r = 1:size(ROIs,1)
     end
     for d = 1:numel(desiredDir4ROIr)
         desiredDirection = desiredDir4ROIr{d};
-        [w,sqrtQ] = linearQuadraticCoefficientCalculation(ROIr,avoidRegionR,desiredDirection,T,G,V);
+        [w,Q] = linearQuadraticCoefficientCalculation(ROIr,avoidRegionR,desiredDirection,T,G,V);
         save([pwd '/' str2 '/roi' num2str(r) '/variablesAndBounds' num2str(d) '.mat'],'w','sqrtQ','tot','ind','pmax','desiredDirection','ROIr');
         wScale = norm(w,2);
         w = w/wScale;
         for ss = 1: numel(tot)
             for si = 1:size(ind,2)
                 for pi = 1:size(pmax,2)
-                    [currentArray,fval,dualV] = optimizationUsingCvxToolbox(w,sqrtQ,tot(ss),ind(:,si),pmax(:,pi));
+                    [currentArray,fval,dualV] = optimizationUsingCvxToolbox(w,Q,tot(ss),ind(:,si),pmax(:,pi));
                     currentArrayReferenceAdded = [currentArray; -sum(currentArray)];
                     if ~isnan(fval)
                         fval = fval*wScale;
