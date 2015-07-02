@@ -88,7 +88,7 @@ for i = 1:numOfAvoid
     Q{i} = T' * Qtemp * T;
 end
 
-fprintf('%s%f%s\n','sqrtQ is calculated in ',toc,' seconds.');
+fprintf('%s%f%s\n','Q is calculated in ',toc,' seconds.');
 end
 
 function w = weightedInnerProductSumOverROI(desiredDirection,ROIelemVolumes)

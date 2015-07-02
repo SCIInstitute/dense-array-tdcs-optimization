@@ -1,4 +1,4 @@
-function variables = calcQuadraticLinearTerms(G, T, Jd, ROI, brainLabels)
+function variables = calcQuadraticLinearTerms(G, T, Ed, ROI, brainLabels)
 % Finds the qudratic and linear matrices that are needed for the
 % optimizations in the paper by Dmochowski, et al., 2011.
 %
@@ -6,9 +6,9 @@ function variables = calcQuadraticLinearTerms(G, T, Jd, ROI, brainLabels)
 % Synopsis: [variables] = ( G, T, Jd, ROI )
 %           [variables] = ( G, T, Jd, ROI, brainLabels )
 %
-% Input:    G      = transfer matrix from potential to current density.
+% Input:    G      = transfer matrix from potential to electric field.
 %           T      = transfer matrix from electrode currents to potential.
-%           Jd     = desired current density at the target.
+%           Jd     = desired electric field at the target.
 %           ROI    = target region of interest.
 %           brainLabels = brain labels.
 %
@@ -17,7 +17,7 @@ function variables = calcQuadraticLinearTerms(G, T, Jd, ROI, brainLabels)
 %                .Q_nonROI = nonROI matrix
 %                .Q_brain = brain matrix (.Q_ROI + .Q_nonROI)
 %                .v_brain = linear term for the brain
-%                .Jd_ROI  = desired current density at ROI.
+%                .Ed_ROI  = desired electric field at ROI.
 
 % Notes:    1. Used to speed up optimizations in " Optimized multi-electrode
 %           stimulation increases focality and intensity at the target.",
@@ -66,9 +66,9 @@ if (nargin == 5) %calculating quadratic terms require input brainLabels
 end
 
 %Linear terms
-if size(Jd,1) == 3*nnz(ROI)
-    variables.Jd_ROI = Jd;
+if size(Ed,1) == 3*nnz(ROI)
+    variables.Ed_ROI = Ed;
 else
-    variables.Jd_ROI = Jd(expandedROI);
+    variables.Ed_ROI = Ed(expandedROI);
 end
-variables.v_brain = T' * (G(expandedROI,:)' * variables.Jd_ROI);
+variables.v = T' * (G(expandedROI,:)' * variables.Ed_ROI);

@@ -76,8 +76,8 @@ B(10,:) = (   (A(7,:) .* A(11,:) - A(8,:) .* A(10,:)) - (A(1,:) .* A(11,:) - A(2
 B(11,:) = ( - (A(4,:) .* A(11,:) - A(5,:) .* A(10,:)) + (A(1,:) .* A(11,:) - A(2,:) .* A(10,:)) - (A(1,:) .* A(5,:) - A(2,:) .* A(4,:)) ) .* detA;
 B(12,:) = (   (A(4,:) .* A(8,:)  - A(5,:) .* A(7,:))  - (A(1,:) .* A(8,:)  - A(2,:) .* A(7,:))  + (A(1,:) .* A(5,:) - A(2,:) .* A(4,:)) ) .* detA;
 
-rowIdx = vec(repmat(1:3*M,4,1));
-colIdx = double(vec(repmat(elem,3,1)));
+rowIdx = reshape(repmat(1:3*M,4,1),1,[]);
+colIdx = double(reshape(repmat(elem,3,1),1,[]));
 clear elem;
 sigmaGradV = sparse(rowIdx,colIdx,B,3*M,N);
 

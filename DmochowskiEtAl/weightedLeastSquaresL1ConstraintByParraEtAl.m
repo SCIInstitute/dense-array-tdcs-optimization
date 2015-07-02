@@ -1,5 +1,5 @@
 function [I, fVal, dV] = weightedLeastSquaresL1ConstraintByParraEtAl(Q_weighted, v_weighted, ind)
-% Weighted least squares solution to hd_tDCS electrode current stimulus 
+% Weighted least squares solution to hd_tDCS electrode current stimulus
 % optimization with L1 constraint.
 %
 % Synopsis: [I, fval, dV] = weightedLeastSquaresL1ConstraintByParraEtAl(...
@@ -10,12 +10,12 @@ function [I, fVal, dV] = weightedLeastSquaresL1ConstraintByParraEtAl(Q_weighted,
 %           ind             = individual electrode current bound.
 %
 % Output:   I       =   array of electrode currents.
-%           fVal    =   least squares error for best solution. 
+%           fVal    =   least squares error for best solution.
 %           dV      =   dual variables for the constraints.
 
-% Notes:    1. Use the equation in section 3.2. of " Optimized multi-electrode 
+% Notes:    1. Use the equation in section 3.2. of " Optimized multi-electrode
 %           stimulation increases focality and intensity at the target.",
-%           Jacek P Dmochowski, et al., Journal of neural engineering 
+%           Jacek P Dmochowski, et al., Journal of neural engineering
 %           8.4 (2011): 046011.
 %
 %           2. We convert quadratic objective function to norm 2 in order
@@ -29,7 +29,9 @@ tic;
 %Cholesky factor for reasons explained above
 [sqrtQ_weighted,p] = chol(Q_weighted);
 if p>0
-    sqrtQ_weighted = chol(Q_weighted + 1e-9*eye(size(Q_weighted,1)));
+    warning('quadratic matrix is not positive definite.');
+    minEig = min(eig(Q_weighted));
+    sqrtQ_weighted = chol(Q_weighted + (-minEig+eps)*eye(size(Q_weighted)));
 end
 
 L = size(sqrtQ_weighted,2); %number of electrodes
@@ -72,7 +74,8 @@ end
 
 I = x;
 fVal = cvx_optval;
-dV = [indConstLB; indConstUB];
+dV.indLB = indConstLB;
+dV.indUB = indConstUB;
 fprintf('%s%f%s\n', 'Weighted least squares solution is found in ', toc, ...
     ' seconds.');
 end

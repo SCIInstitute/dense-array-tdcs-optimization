@@ -28,9 +28,11 @@ function [I, fVal, dV] = weightedLeastSquaresTotalIndividual(Q, b, tot, ind)
 
 tic;
 L = size(Q,2); %number of electrodes
-sqrtQ = chol(Q,p);
+[sqrtQ,p] = chol(Q);
 if p>0
-    sqrtQ = chol(Q+1e-9*eye(size(Q)));
+    warning('quadratic matrix is not positive definite.');
+    minEig = min(eig(Q));
+    sqrtQ = chol(Q + (-minEig+eps)*eye(size(Q)));
 end
 m = 2*Q'\b;
 

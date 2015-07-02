@@ -31,7 +31,9 @@ for i=1:pp
     %Cholesky factor for reasons explained above
     [sqrtQ{i},p] = chol(Q{i});
     if p>0
-        sqrtQ{i} = chol(Q{i}+1e-9*eye(size(Q{i},1)));
+        warning('quadratic matrix is not positive definite.');
+        minEig = min(eig(Q{i}));
+        sqrtQ{i} = chol(Q{i}+(-minEig+eps)*eye(size(Q{i})));
     end
 end
 if size(ind,1) == L %In case reference electrode bound is not defined
@@ -134,7 +136,10 @@ end
 
 electrodeCurrents = x;
 fval = cvx_optval;
-dualVariables = [totConstV; indConstLB; indConstUB; cell2mat(powConstV)]; 
+dualVariables.tot = totConstV;
+dualVariables.indLB = indConstLB;
+dualVariables.indUB = indConstUB; 
+dualVariables.pow = cell2mat(powConstV); 
 
 fprintf('%s%f%s\n','Electrode current optimization is solved in ',toc,' seconds.');
 end

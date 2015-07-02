@@ -6,7 +6,7 @@ function [Q,b] = findQuadraticLinearTerms4Objective(mapV2E, T, roi, surfNormal, 
 %                       roi, surfaceNormal)
 %
 %
-% Input:    headMesh        = tetrahedral head mesh.
+% Input:    headMesh        = tetrahedrabl head mesh.
 %               .cell       = tetrahedra definition matrix. Size: 4 x #cells
 %               .node       = node coordinates.
 %           mapV2E          = mapping from potential to electric field

@@ -5,18 +5,11 @@ if isempty(dmoc)
     variables = calcQuadraticLinearTerms(G, T, Ed*sfn, roi, field==4 | field==5);
     [dmoc.Q,dmoc.v] = findWeightedQuadratic(variables.Q_ROI,variables.Q_nonROI,variables.v,1,nnz(roi),nnz(field==4|field==5));
     dmoc.ind = 1e-3;
-    save('dmoc','dmoc');
 end
 if isempty(ruff)
-    E0 = 0.3;
-    tmap = ones(1,numel(field);
-    tMin = 0;
-    [ruff.Q, ruff.b] = findQuadraticLinearTerms4Objective(G, T, roi, sfn, tmap, tMin, E0);
-    save('ruff','ruff');
+    [ruff.Q,rb] = findQuadraticLinearTerms4Objective(mapV2E, T, roi, surfNormal, tmap, tMin, E0)
 end
 if isempty(guler)
-    [ guler.w, guler.Q ]  = linearQuadraticCoefficientCalculation(roi, field==4 | field==5, sfn, T, G, vole);
-    save('guler','guler');
 end
 
 %% optimization using Dmochowski et al.
