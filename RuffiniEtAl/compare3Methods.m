@@ -1,15 +1,15 @@
 function [getal, detal, retal, stats] = compare3Methods(dmoc, ruff, guler, G, T, field, roi, sfn, vole)
-% function definition
+% [getal,detal,retal,stats] = compare3Methods(dmoc,ruff,guler,G,T,field,roi,sfn,vole)
 if isempty(dmoc)
     Ed= 0.3;
-    variables = calcQuadraticLinearTerms(G, T, Ed*sfn, roi, field==4 | field==5);
+    variables = calcQuadraticLinearTerms(G, T, reshape(Ed*sfn,1,[])', roi, field==4 | field==5);
     [dmoc.Q,dmoc.v] = findWeightedQuadratic(variables.Q_ROI,variables.Q_nonROI,variables.v,1,nnz(roi),nnz(field==4|field==5));
     dmoc.ind = 1e-3;
     save('dmoc','dmoc');
 end
 if isempty(ruff)
     E0 = 0.3;
-    tmap = ones(1,numel(field);
+    tmap = ones(1,numel(field));
     tMin = 0;
     [ruff.Q, ruff.b] = findQuadraticLinearTerms4Objective(G, T, roi, sfn, tmap, tMin, E0);
     save('ruff','ruff');
@@ -23,21 +23,21 @@ end
 [detal.currentArray, detal.fval, detal.dv] = weightedLeastSquaresL1ConstraintByParraEtAl(dmoc.Q, dmoc.v, dmoc.ind);
 
 %% calculate bounds for the additional constraints on the other two methods.
-rtot = (norm(detal.Solution,1)+abs(sum(detal.Solution)))/2;
+rtot = (norm(detal.currentArray,1)+abs(sum(detal.currentArray)))/2;
 ind = dmoc.ind;
 
 %% optimization using Ruffini et al.
 [retal.currentArray, retal.fval, retal.dv] = weightedLeastSquaresTotalIndividual(ruff.Q, ruff.b, rtot, ind);
 
 %% optimization using our method.
-gtot = min((norm(detal.Solution,1)+abs(sum(detal.Solution)))/2,(norm(retal.Solution,1)+abs(sum(retal.Solution)))/2);
+gtot = min((norm(detal.currentArray,1)+abs(sum(detal.currentArray)))/2,(norm(retal.currentArray,1)+abs(sum(retal.currentArray)))/2);
 for i =1:numel(guler.Q)
     pBrain(i) = min(norm(guler.Q{i}*detal.currentArray)^2,norm(guler.Q{i}*retal.currentArray)^2);
 end
 [getal.currentArray, getal.fval, getal.dv] = optimizationUsingCvxToolbox(guler.w,guler.Q,gtot,ind,pBrain);
 
 if nargin >= 4
-    stats.constraints.tot.detal = tot;
+    stats.constraints.tot.detal = rtot;
     stats.constraints.tot.retal = rtot;
     stats.constraints.tot.getal = gtot;
     stats.constraints.ind = ind;
