@@ -2,21 +2,21 @@ function [getal, detal, retal, stats] = compare3Methods(dmoc, ruff, guler, G, T,
 % [getal,detal,retal,stats] = compare3Methods(dmoc,ruff,guler,G,T,field,roi,sfn,vole)
 if isempty(dmoc)
     Ed= 0.3;
-    variables = calcQuadraticLinearTerms(G, T, reshape(Ed*sfn,1,[])', roi, field==4 | field==5);
+    variables = calcQuadraticLinearTerms(G, T, (reshape(Ed*sfn,1,[]))', roi, field==4 | field==5);
     [dmoc.Q,dmoc.v] = findWeightedQuadratic(variables.Q_ROI,variables.Q_nonROI,variables.v,1,nnz(roi),nnz(field==4|field==5));
-    dmoc.ind = 1e-3;
-    save('dmoc','dmoc');
+    dmoc.ind = 1;
+    save('dmoc2','dmoc');
 end
 if isempty(ruff)
     E0 = 0.3;
     tmap = ones(1,numel(field));
     tMin = 0;
     [ruff.Q, ruff.b] = findQuadraticLinearTerms4Objective(G, T, roi, sfn, tmap, tMin, E0);
-    save('ruff','ruff');
+    save('ruff2','ruff');
 end
 if isempty(guler)
     [ guler.w, guler.Q ]  = linearQuadraticCoefficientCalculation(roi, field==4 | field==5, sfn, T, G, vole);
-    save('guler','guler');
+    save('guler2','guler');
 end
 
 %% optimization using Dmochowski et al.
@@ -30,19 +30,19 @@ ind = dmoc.ind;
 [retal.currentArray, retal.fval, retal.dv] = weightedLeastSquaresTotalIndividual(ruff.Q, ruff.b, rtot, ind);
 
 %% optimization using our method.
-gtot = min((norm(detal.currentArray,1)+abs(sum(detal.currentArray)))/2,(norm(retal.currentArray,1)+abs(sum(retal.currentArray)))/2);
+gtot = min((norm(detal.currentArray,1) + abs(sum(detal.currentArray)))/2,(norm(retal.currentArray,1) + abs(sum(retal.currentArray)))/2);
 for i =1:numel(guler.Q)
-    pBrain(i) = min(norm(guler.Q{i}*detal.currentArray)^2,norm(guler.Q{i}*retal.currentArray)^2);
+    pBrain(i) = min(detal.currentArray'*guler.Q{i}*detal.currentArray,retal.currentArray'* guler.Q{i}*retal.currentArray);
 end
 [getal.currentArray, getal.fval, getal.dv] = optimizationUsingCvxToolbox(guler.w,guler.Q,gtot,ind,pBrain);
 
-if nargin >= 4
+
     stats.constraints.tot.detal = rtot;
     stats.constraints.tot.retal = rtot;
     stats.constraints.tot.getal = gtot;
     stats.constraints.ind = ind;
     stats.constraints.pow = pBrain;
-    
+if nargin >= 4   
     eField = G * (T * getal.currentArray);
     eIntensity = sqrt(sum(reshape(eField.*eField,3,[])));
     clear eField;
@@ -79,6 +79,7 @@ if nargin >= 4
     stats.rcaveROI = sum(eIntensity(roi==1) .* vole(roi==1))/sum(vole(roi==1));
     
     save('currentStats','retal','detal','getal','stats');
+end
     
 end
 
