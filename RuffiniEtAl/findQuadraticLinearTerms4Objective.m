@@ -24,9 +24,9 @@ M = size(mapV2E,1)/3; % # elements
 N = size(mapV2E,2); % # nodes
 L = size(T,2); % # electrodes
 
-if size(T,1) ~= N
-    error('mismatch in transfer matrix size');
-end
+%if size(T,1) ~= N
+ %   error('mismatch in transfer matrix size');
+%end
 if size(roi,2) ~= M
     roi = roi';
 end
@@ -65,15 +65,15 @@ mapOntoSurfNormal = sparse(blkdiag(surfNormalInCells{:}));
 
 %normal component of electric field (tmap weighted) 
 Ewtemp = (sparse(diag(W)) * mapOntoSurfNormal * mapV2E(eRoiIdx,:));
-Ew = Ewtemp * T;
+%Ew = Ewtemp * T;
 
 %desired normal component of electric field (tmap weighted)
-Yw = diag(tmap) * E0; %Yw
+Yw = sparse(diag(tmap)) * E0; %Yw
 
 k = numel(W) / sum(W.^2);
 
-Q = k * (Ew' * Ew) ;
-b = -2 * k * (Yw' * Ew)';
+Q = k * T' * (Ewtemp' * Ewtemp) * T ;
+b = -2 * k * (Yw' * Ewtemp * T)';
 
 
 
