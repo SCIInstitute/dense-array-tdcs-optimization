@@ -56,19 +56,23 @@ end
 
 tmap(abs(tmap)<tMin) = 0; %thresholding tmap
 W = abs(tmap);
-
+W(W==0) = 2;
+wmat = sparse(1:numel(W),1:numel(W),W,numel(W),numel(W));
+tmat = sparse(1:numel(W),1:numel(W),tmap,numel(W),numel(W));
 roiIdx = find(roi==1);
 eRoiIdx = sort([3*roiIdx 3*roiIdx-1 3*roiIdx-2]);
 
 surfNormalInCells = mat2cell(surfNormal',ones(size(surfNormal,2),1),3);
 mapOntoSurfNormal = sparse(blkdiag(surfNormalInCells{:}));
+clear surfNormalInCells;
 
 %normal component of electric field (tmap weighted) 
-Ewtemp = (sparse(diag(W)) * mapOntoSurfNormal * mapV2E(eRoiIdx,:));
+Ewtemp = wmat *(mapOntoSurfNormal * mapV2E(eRoiIdx,:));
+%Ewtemp = ssparse(diag(W)) * Ewtemp;
 %Ew = Ewtemp * T;
 
 %desired normal component of electric field (tmap weighted)
-Yw = sparse(diag(tmap)) * E0; %Yw
+Yw = tmat * E0; %Yw
 
 k = numel(W) / sum(W.^2);
 
