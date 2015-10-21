@@ -52,12 +52,12 @@ ylim([0 0.2])
 set(gca,'YTick',[0 0.05 0.10 0.15 0.20])
 %set(gca,'YTickLabel',sprintf('%1.2f|',y))
 
-title('PC','FontSize',14);
-xlabel('log_{10}(Current Intensity) [A/m^2]','FontSize',14);
+title('MFC','FontSize',14);
+xlabel('log_{10}(Current density magnitude) [A/m^2]','FontSize',14);
 ylabel('Normalized volume','FontSize',14);
 
-aa = legend('Skin','Skull','CSF','GM','ROI');
-set(aa,'FontSize',14);
+%aa = legend('Scalp','Skull','CSF','GM','ROI');
+%set(aa,'FontSize',14);
 set(gca,'FontSize',14);
 
 pu = get(gcf,'PaperUnits');
@@ -89,7 +89,7 @@ set(gcf,'PaperPositionMode','Manual');
 %set(gcf,'color','w');
 
 %print the figure as pdf
-print(gcf, '-dpdf', '-r150', 'MFC.pdf');
+%print(gcf, '-dpdf', '-r150', 'MFC_densityMagnitude.pdf');
 
 
 %saveas(a,['roi' num2str(r) '\Hist' num2str(d) num2str(s) num2str(ss) num2str(p) '.png'],'png');

@@ -12,7 +12,7 @@ function [Q,b] = findQuadraticLinearTerms4Objective(mapV2E, T, roi, surfNormal, 
 %           mapV2E          = mapping from potential to electric field
 %           T               = transfer matrix
 %           roi             = region of interest
-%           surfaceNormal   = surface normal for the ROI elements.
+%           surfaceNormal   = outer surface normal for the ROI elements.
 %           tmap            = tmap values for the ROI elements.
 %           E0              = desired electric field.
 %
@@ -53,7 +53,8 @@ end
     
 
 %% Calculate mapping matrices
-
+tmap = -tmap; % inverting tmap to match 'excite positive regions by sending 
+              % currents in' convention.
 tmap(abs(tmap)<tMin) = 0; %thresholding tmap
 W = abs(tmap);
 W(W==0) = 2;
@@ -76,7 +77,7 @@ Yw = tmat * E0; %Yw
 
 k = numel(W) / sum(W.^2);
 
-Q = k * T' * (Ewtemp' * Ewtemp) * T ;
+Q = k * T' * (Ewtemp' * Ewtemp) * T;
 b = -2 * k * (Yw' * Ewtemp * T)';
 
 
