@@ -1,5 +1,5 @@
 function [newVar,percentLoss] = ...
-    ridElectrodesWithSmallCurrents(w, sQ, tot, ind, pmax, Ith)
+    ridElectrodesWithSmallCurrents(w, Q, tot, ind, pmax, Ith)
 %% Reformulates the hd-tdcs optimization problem such that the electrodes 
 % with small currents in the original solution are set to 0. 
 %
@@ -38,19 +38,18 @@ function [newVar,percentLoss] = ...
 %% Reading the inputs
 
 %% Solving the original problem using CVX toolkit
-[ca, fval, dv] = optimizationUsingCvxToolbox(w,sQ,tot,ind,pmax);
+[ca, fval, dv] = optimizationUsingCvxToolbox(w,Q,tot,ind,pmax);
 
 %% Converting the problem to reduced form
 idx = abs(ca) >= Ith;
-fprintf('%s%d%s\n','The number of remaining electrode set is ',nnz(idx),'.');
+fprintf('%s%d%s\n','The number of the remaining electrode set is ',nnz(idx),'.');
 newVar.w = w(idx);
-for i = 1:numel(sQ)
-newVar.sQ{i} = sQ{i}(:,idx);
+for i = 1:numel(Q)
+newVar.Q{i} = Q{i}(idx,idx);
 end
 newVar.tot = tot;
 newVar.ind = ind;
 newVar.pmax = pmax;
 newVar.idx= idx;
 percentLoss = (fval - newVar.w*ca(idx))/fval*100;
-
 end
