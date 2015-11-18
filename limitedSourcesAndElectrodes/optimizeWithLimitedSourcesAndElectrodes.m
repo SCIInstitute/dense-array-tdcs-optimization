@@ -60,9 +60,9 @@ results.unconstrainedSolution.dualVariables4Constraints = dv;
 %% Reduce the problem size by setting small currents to 0.
 if ~isempty(Ithresh)
     [newVar,percentLoss] = ridElectrodesWithSmallCurrents(w,Q,tot,ind,pmax,Ithresh);
-    if percentLoss >= 1
+    if percentLoss >= 5
         error('Percentage loss too high.');
-    elseif percentLoss >= 1e-3
+    elseif percentLoss >= 1
         warning('Percentage loss by setting low currents to 0 is %f%s\n',...
             percentLoss,'.');
     else
@@ -77,6 +77,17 @@ if ~isempty(Ithresh)
     results.newOptimizationVariables = newVar;
 end
 
+sqrtQ = cell(1,pp);
+for i=1:pp
+    %Cholesky factor for reasons explained above
+    [sqrtQ{i},p] = chol(Q{i});
+    if p>0
+        warning('quadratic matrix is not positive definite.');
+        minEig = min(eig(Q{i}));
+        sqrtQ{i} = chol(Q{i}+(-minEig+eps)*eye(size(Q{i})));
+    end
+end
+
 nStates = nSources + 1; %'not connected' is a state
 
 %% Initialize states for the electrodes.
@@ -89,36 +100,39 @@ if isempty(zhat)
     end
     %idx2 = kmeans(1e-3*Te*ca,nSources+1);
     %calculate zhat.
-    [results.initialState.x0,zhat] = solveRelaxedProblem(w,Q,tot,ind,pmax,Te,configuration0);
+    [results.initialState.x0,zhat] = solveRelaxedProblem(w,sqrtQ,tot,ind,pmax,Te,configuration0);
     potentials2 = Te*ca;
     if ~isempty(Ithresh)
-        bigCurrents = ca >= 10*Ithresh;
+        bigCurrents = ca >= 2*Ithresh;
     else
         bigCurrents = ca >= 1e-5
     end
     bigCurrentIdx = find(bigCurrents == 1);
-    [idx1,c1] = kmeans(potentials2(bigCurrents),nSources);
-    configuration1{1} = find(bigCurrents==0);
-    for i=2:nStates
-        configuration1{i} = bigCurrentIdx(find(idx1 == i-1));
+    if (nnz(bigCurrents) >= nSources)
+        [idx1,c1] = kmeans(potentials2(bigCurrents),nSources);
+        configuration1{1} = find(bigCurrents==0);
+        for i=2:nStates
+            configuration1{i} = bigCurrentIdx(find(idx1 == i-1));
+        end
+        [results.initialState.x1,zhat1] = solveRelaxedProblem(w,sqrtQ,tot,ind,pmax,Te,configuration1);
+        if zhat1 > zhat
+            %fprintf('%s\n','Using not connected in the initialization is better.');
+            %fprintf('%s%f%s\n','Percentage increase for the initialization is ',100*(zhat1-zhat)/zhat,'.');
+            zhat = zhat1;
+            %disp(zhat1);
+        end
     end
-    [results.initialState.x1,zhat1] = solveRelaxedProblem(w,Q,tot,ind,pmax,Te,configuration1);
-    if zhat1 > zhat
-        %fprintf('%s\n','Using not connected in the initialization is better.');
-        %fprintf('%s%f%s\n','Percentage increase for the initialization is ',100*(zhat1-zhat)/zhat,'.');
-        zhat = zhat1;
-        %disp(zhat1);
-    end
-    
     if strcmp(vOrder,'high margin')
         [Dist,cIdx] = pdist2(c0,Te*ca,'euclidean','Smallest',1);
         %IDEA: use also the center indices in the node selection process.
         [~,idxOrder] = sort(Dist,'descend');
     end
-    if strcmp(vOrder,'high margin') && zhat1 == zhat
+    if strcmp(vOrder,'high margin')  && nnz(bigCurrents) >= nSources
+        if zhat1 == zhat
         [Dist,cIdx] = pdist2(c1,Te*ca,'euclidean','Smallest',1);
         %IDEA: use also the center indices in the node selection process.
         [~,idxOrder] = sort(Dist,'descend');
+        end
     end
 end
 % IDEA: Ordering of the electrodes for bAb algorithm may be initialized.
@@ -168,6 +182,9 @@ results.xhatBAB = [];
 results.zhatBAB = [];
 results.tBAB = [];
 results.branchBAB = [];
+
+zTotalDepth = zeros(L);
+nCreatedBranchesDepth = zeros(L);
 %Define electrode ordering here or in the loop (if we would like to have
 %different ordering of the importance of the electrodes at each branch
 
@@ -202,6 +219,7 @@ while ~isempty(activeSet)
     %         parentelecAssign = dec2base(nextBranch,nStates);
     %     end
     fprintf('%-24s\t', nextBranch);
+    branchDepth = numel(nextBranch)+1;
     for i = 1:pr
         %% Setting the feasible set for the branch
         %  Ft+i = Fr n Ri
@@ -210,26 +228,27 @@ while ~isempty(activeSet)
         % Assign electrode states according to branch number
         % Extract electrode states from the assignment vector and ordering
         elecAssign = [nextBranch labelAlphabet(i)];
-        
+        nConnectedElectrodes = numel(elecAssign(elecAssign ~= '0'));
         % Continue if the number of electrodes exceed the total number of
         % electrodes
-        if(numel(elecAssign(elecAssign ~= '0')) <= nElectrodes)
+        if(nConnectedElectrodes > nElectrodes)
             continue
         end
         
-        %Eliminate the branch if it is not sorted.
+        %Don't create a branch if the assignment is not sorted, not to
+        %solve equivalent problems
         [~,ia,~] = unique(elecAssign(elecAssign ~= '0'));
         if issorted(ia)
             for j = 1:nStates
                 jStateElec = elecAssign == labelAlphabet(j);
                 conf{j} = [initSet{j} unknownSetOrder(jStateElec)];
             end
-            [x,zr,pot] = solveRelaxedProblem(w,Q,tot,ind,pmax,Te,conf);
-            
+            [x,zr,pot] = solveRelaxedProblem(w,sqrtQ,tot,ind,pmax,Te,conf);
+            zTotalDepth(branchDepth) = zTotalDepth(numel(elecAssign))+zr;
+            nCreatedBranchesDepth(branchDepth) = nCreatedBranchesDepth(branchDepth)+1;
             if zhat < zr
                 if numel(unique(round(pot(setdiff(1:L,conf{1}))))) < nStates
-                    %calculate percentage. The brach is pruned (best solution
-                    % of that branch is found).
+                    %update the best solution
                     zhat = zr;
                     fprintf('%s\t','Z');
                     results.xhatBAB(:,end+1) = x;
@@ -238,13 +257,6 @@ while ~isempty(activeSet)
                     results.branchBAB{end+1} = elecAssign;
                 elseif numel(elecAssign) < numel(unknownSetOrder)
                     %we add the children branch to the active set
-                    %                     if nStates*nextBranch+i-1 > 2^52
-                    %                         %Add how to create 2d idx.
-                    %                     elseif numel(nextBranch) >= 2
-                    %                         %Add how to find next activeSet idx.
-                    %                     else
-                    %                     activeSet{end+1} = nStates*nextBranch+i-1;
-                    %                     end
                     activeSet{end+1} = elecAssign;
                     z(end+1) = zr;
                     fprintf('%s\t','B');
@@ -318,6 +330,7 @@ cvx_end
 if ~strcmp(cvx_status,'Solved')
     fprintf('%s','.');
     cvx_begin quiet
+    cvx_precision low
     cvx_solver sedumi
     
     variable u(L-nZeros)

@@ -51,5 +51,6 @@ newVar.tot = tot;
 newVar.ind = ind;
 newVar.pmax = pmax;
 newVar.idx= idx;
-percentLoss = (fval - newVar.w*ca(idx))/fval*100;
+[~,fval2,~] = optimizationUsingCvxToolbox(newVar.w,newVar.Q,newVar.tot,newVar.ind,newVar.pmax);
+percentLoss = (fval - fval2)/fval*100;
 end
