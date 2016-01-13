@@ -37,7 +37,7 @@ for i=1:pp
     end
 end
 if size(ind,1) == L %In case reference electrode bound is not defined
-    ind(L+1,:) = ind(end,:); %Make ref elec have the same const as last one
+    ind(L+1,:) = ind(1,:); %Make ref elec have the same const as last one
 end
 
 if size(ind,2) == 1 %Lower bound = - Upper bound
