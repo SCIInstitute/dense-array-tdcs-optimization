@@ -26,7 +26,11 @@ tic;
 elem = headMesh.cell;
 node = headMesh.node;
 field = headMesh.field;
+if numel(sigmaLookupTable) == numel(unique(headMesh.field))
 sigma = sigmaLookupTable(field);
+elseif numel(sigmaLookupTable) == numel(headMesh.field);
+    sigma = sigmaLookupTable';
+end
 clear headMesh;
 
 if size(elem,1) ~= 4
@@ -37,9 +41,6 @@ if size(node,1) ~= 3
 end
 if size(field,1) ~= 1
     field = field';
-end
-if numel(sigmaLookupTable) ~= numel(unique(field))
-    error('mismatch between tissue types and conductivity look up table');
 end
 
 if size(field,2) ~= size(elem,2)

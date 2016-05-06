@@ -1,12 +1,12 @@
 function erni = calculateErrorRelative2NoIntervention(eNormal2Cortex,tmap,E0,tMin)
 
+w = abs(tmap);
+if ~isempty(tMin)
+tmap(abs(tmap)<=tMin) = 0;
+w(tmap==0) = tMin;
+end
 
-tmap_thresholded = tmap;
-tmap_thresholded(abs(tmap_thresholded)<=2) = 0;
-w = abs(tmap_thresholded);
-w(w==0) = 2;
-
-y = E0 * tmap_thresholded;
+y = E0 * tmap;
 ew = w .* eNormal2Cortex;
 
 erni = -2 * y .* ew + ew .* ew;

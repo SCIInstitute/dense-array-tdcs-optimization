@@ -20,6 +20,14 @@ function surfNormD = corticalSurfaceNormalDirection4GM(headMesh,opts)
 %% Reading inputs
 
 grayMatter = headMesh.cell(:,headMesh.field==4);
+
+a = finddisconnsurf(grayMatter');
+if size(a,2) > 1
+    for i = 1:size(a,1)
+        ai(i) = size(a{i},1);
+    end
+    grayMatter = a{find(ai==max(ai))}';
+end
 whiteMatter = headMesh.cell(:,headMesh.field==5);
 csf = headMesh.cell(:,headMesh.field==3);
 node = headMesh.node;

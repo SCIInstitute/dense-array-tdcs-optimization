@@ -1,28 +1,31 @@
-function [currentArray] = babReducedProblem(w,Q,tot,ind,pmax,Te,nSources,Ith,zhat,vOrder)
-%% Finds the optimal solution with limited number of current sources
-%  on the dominant electrode set in the original solution using branch
-%  and bound algorithm
+function [StimPattern] = branchBoundAlgorithm4Tdcs(w,Q,tot,ind,pmax,Te,nSources,Ith,zhat,vOrder)
+%% Approximates the optimal solution with fewer current sources using branch
+%  and bound algorithm. Stimulus pattern is denoted by x in the script. 
 %
 %
-% Synopsis: [x,fval,dv] = ...
-%           babReducedProblem(w, sqrtQ, tot, ind, pmax, Te, nSources, Ith)
+% Synopsis: [StimPattern] = ...
+%           branchBoundAlgorithm4Tdcs(w, sqrtQ, tot, ind, pmax, Te, nSources, Ith)
 %
 %
-% Input:    w           =   objective function coefficients
-%           sqrtQ       =   square root matrix of quadratic const. matrix
-%           tot         =   total current bound
+% Input:    w           =   linear objective function coefficients
+%                           ( objective: maximize w' * x )
+%           Q           =   quadratic power constraint matrix
+%                           ( power constraint: x' * Q * x <= pmax )
+%           tot         =   total injected current bound
 %           ind         =   individual electrode current bounds
 %           pmax        =   power constraint bound
-%           Te          =   matrix linking elec currents to elec potential
-%           nSources    =   number of current sources
+%           Te          =   matrix linking electrode currents to electrode 
+%                           potential (Electrode potentials = Te * x)
+%           nSources    =   number of available current sources
 %           Ith         =   Threshold current value to be set to 0
 %           vOrder      =   Vertical ordering of electrodes. Choose: 'high
-%                           margin', 'absolute', 'descend',
+%                           margin', 'absolute', 'descend', 'contribution'
 %
 %
-% Output:   x       =   optimal electrode current stimulus pattern
-%           fval    =   optimized directional current density in the ROI
-%           dv      =   dual variables for the constraints
+% Output:   StimPattern =   optimal electrode current stimulus pattern 
+
+% NOTES: 
+%   1. Potential unit is V
 
 %% Reading inputs and checking sizes
 tic;
@@ -41,16 +44,23 @@ if nSources > 20
     error('The number of current sources is less than 21.');
 end
 
-%Potential unit is chosen to be V
+sQ = cell(1,pp);
+for i=1:pp
+    [sQ{i},p] = chol(Q{i});
+    if p>0
+        warning('quadratic matrix is not positive definite.');
+        minEig = min(eig(Q{i}));
+        sQ{i} = chol(Q{i}+(-minEig+eps)*eye(size(Q{i})));
+    end
+end
 
-%% First optimization to get the general unconstrained (i.e. there may be
-%  as many current sources as number of electrodes) solution
+%% First optimization to get the general solution
 [ca,fval,dv] = optimizationUsingCvxToolbox(w, Q, tot, ind, pmax);
 
-currentArray.origCurrent = ca;
-currentArray.origPot = Te * ca;
-currentArray.origObj = fval;
-currentArray.origDV = dv;
+StimPattern.origCurrent = ca;
+StimPattern.origPot = Te * ca;
+StimPattern.origObj = fval;
+StimPattern.origDV = dv;
 
 %% Reduce the problem size by setting small currents to 0.
 [newVar,percentLoss] = ...
@@ -67,8 +77,6 @@ L = numel(w);
 Q = newVar.Q;
 Te = Te(newVar.idx,newVar.idx);
 
-currentArray.newVar = newVar;
-
 sQ = cell(1,pp);
 for i=1:pp
     [sQ{i},p] = chol(Q{i});
@@ -79,18 +87,20 @@ for i=1:pp
     end
 end
 
+StimPattern.newVar = newVar;
+
 %% Find an initial set of states for the electrodes.
 %
 nStates = nSources+1;
 
+if isempty(zhat)
+    %Use kmeans clustering to start the initialization.
     [idx0,c0] = kmeans(Te*ca(newVar.idx),nSources);
     conf0{1} = [];
     for i=2:nStates
         conf0{i} = find(idx0 == i-1);
     end
-    %idx2 = kmeans(1e-3*Te*ca(newVar.idx),nSources+1);
-    %calculate zhat.
-    [currentArray.x0,zhat0] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf0);
+    [StimPattern.x0,zhat] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf0);
     pots2 = Te*ca(newVar.idx);
     bigCurrents = ca(newVar.idx) >= 2*Ith;
     bigCurrentIdx = find(bigCurrents == 1);
@@ -99,34 +109,34 @@ nStates = nSources+1;
     for i=2:nStates
         conf1{i} = bigCurrentIdx(find(idx1 == i-1));
     end
-    [currentArray.x1,zhat1] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf1);
-    if isempty(zhat)
-        zhat = max(zhat0,zhat1)
-    elseif max(zhat0,zhat1) > zhat
-        zhat = max(zhat0,zhat1);
+    [StimPattern.x1,zhat1] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf1);
+    if zhat1 > zhat
+        fprintf('%s\n','Using not connected in the initialization is better.');
+        fprintf('%s%f%s\n','Percentage increase for the initialization is ',100*(zhat1-zhat)/zhat,'.');
+        zhat = zhat1;
+        disp(zhat1);
     end
     
+    %Use the indices in the node selection process.
     if strcmp(vOrder,'high margin')
     [Dist,cIdx] = pdist2(c0,Te*ca(newVar.idx),'euclidean','Smallest',1);
-    %IDEA: use also the center indices in the node selection process.
     [~,idxOrder] = sort(Dist,'descend');
     end
     if strcmp(vOrder,'high margin') && zhat1 == zhat
     [Dist,cIdx] = pdist2(c1,Te*ca(newVar.idx),'euclidean','Smallest',1);
-    %IDEA: use also the center indices in the node selection process.
     [~,idxOrder] = sort(Dist,'descend');
     end
-% IDEA: Ordering of the electrodes for bAb algorithm may be initialized.
-fprintf('%s\n','Initializating clustering of electrodes into states.');
+end
 
+% An initial state assignment could be performed here.
+fprintf('%s\n','Initializating clustering of electrodes into states.');
 initSet = cell(nStates,1);
 for i = 1:nStates
     initSet{i} = []; % All states are initialized empty.
 end
 unknownSet = setdiff(1:L,cell2mat(initSet));
 
-%Ordering of the unknown set for the branch and bound algorithm
-%unknownSetOrder = f(unknownSet,optimalSolution,linearWeights)
+%Vertical ordering of electrodes in the branch and bound algorithm.
 switch vOrder
     case 'absolute'
 [~,idxOrder] = sort(abs(ca(newVar.idx)));
@@ -139,7 +149,7 @@ unknownSetOrder = unknownSet(idxOrder);
 
 %% BRANCH AND BOUND ALGORITHM
 
-%   zhat: objective function value of the best feasible solution found so far
+%   zhat: objective function value of the best feasible solution so far
 %   activeSet: List of the unfathomed subsets
 %   t: number of branches generated so far
 %   F0: the set of all feasible solutions
@@ -152,29 +162,22 @@ unknownSetOrder = unknownSet(idxOrder);
 
 %Initialization
 clear x;
-%[~,xhat,zhat,~] = babOne(w,sQ,tot,ind,pmax,Te);
 activeSet{1} = '';
-activeSet2{1} = '';
-%zhat = -inf;
 z(1) = zhat;
-z2(1) = zhat;
 t = 0;
-totalactSetSize = 1;
-labelfet = '0123456789ABCDEFGHIJK';
+activeSetSizeCount = 1;
+labelAlphabet = '0123456789ABCDEFGHIJK';
 percentDone = 0;
-currentArray.xhatBAB = [];
-currentArray.zhatBAB = [];
-currentArray.tBAB = [];
-currentArray.branchBAB = [];
-%Define electrode ordering here or in the loop (if we would like to have
-%different ordering of the importance of the electrodes at each branch
+StimPattern.xhatBAB = [];
+StimPattern.zhatBAB = [];
+StimPattern.tBAB = [];
+StimPattern.branchBAB = [];
 
-%% Main loop of branc and bound. Once finished, all the branches will have
-%been fathomed.
+%% Branch and bound main loop.
 while ~isempty(activeSet)
     
-    fprintf('%.2f%s\t%d\t%d\t',percentDone,'%',t,numel(activeSet));
-    totalactSetSize = totalactSetSize + numel(activeSet);
+    fprintf('%.2f%s\t',percentDone,'%');
+    activeSetSizeCount = activeSetSizeCount + numel(activeSet);
     %100*(1-sum(1./(activeSet-mod(activeSet,nStates)))),'%') is another way
     %to calculate the ratio of finished branches vs total
     
@@ -206,52 +209,40 @@ while ~isempty(activeSet)
         %% Calculating the xt+i, zt+i for the branch
         % Assign electrode states according to branch number
         % Extract electrode states from the assignment vector and ordering
-        elecAssign = [nextBranch labelfet(i)];
+        elecAssign = [nextBranch labelAlphabet(i)];
         %Eliminate the branch if it is not sorted.
         [~,ia,~] = unique(elecAssign(elecAssign ~= '0'));
         if issorted(ia)            
             for j = 1:nStates
-                jStateElec = elecAssign == labelfet(j);
+                jStateElec = elecAssign == labelAlphabet(j);
                 conf{j} = [initSet{j} unknownSetOrder(jStateElec)];
             end
-            [x,zr,pot] = solveRelaxedProblem(w,sQ,tot,ind,pmax,Te,conf);
-
+            [x,zr,pot] = solveRelaxedProblem(w,Q,tot,ind,pmax,Te,conf);
+            
             if zhat < zr
                 if numel(unique(round(pot(setdiff(1:L,conf{1}))))) < nStates
                     %calculate percentage. The brach is pruned (best solution
                     % of that branch is found).
                     zhat = zr;
-                    z2(end+1) = zr;
-                    activeSet2{end+1} = [elecAssign repmat(labelfet(nSources+2),1,numel(w)-numel(elecAssign))];
                     fprintf('%s\t','Z');
-                    currentArray.xhatBAB(:,end+1) = x;
-                    currentArray.zhatBAB(end+1) = zhat;
-                    currentArray.tBAB(end+1) = t;
-                    currentArray.branchBAB{end+1} = elecAssign;
+                    StimPattern.xhatBAB(:,end+1) = x;
+                    StimPattern.zhatBAB(end+1) = zhat;
+                    StimPattern.tBAB(end+1) = t;
+                    StimPattern.branchBAB{end+1} = elecAssign;
                 elseif numel(elecAssign) < numel(unknownSetOrder)
-                    %we add the children branch to the active set
-%                     if nStates*nextBranch+i-1 > 2^52
-%                         %Add how to create 2d idx.
-%                     elseif numel(nextBranch) >= 2
-%                         %Add how to find next activeSet idx.
-%                     else
-%                     activeSet{end+1} = nStates*nextBranch+i-1;
-%                     end
                     activeSet{end+1} = elecAssign;
-                    activeSet2{end+1} = [elecAssign repmat(labelfet(nSources+2),1,numel(w)-numel(elecAssign))];
                     z(end+1) = zr;
-                    z2(end+1) = zr;
                     fprintf('%s\t','B');
                 else
                     fprintf('%s\t','L');
                 end
             else
                 %calculate percentage. The branch is pruned.
-                percentDone = percentDone +100*(nStates^-numel(elecAssign));
+                percentDone = percentDone + 100*(nStates^-numel(elecAssign));
                 fprintf('%s\t','F');
             end
         else
-            percentDone = percentDone +100*(nStates^-numel(elecAssign));
+            percentDone = percentDone + 100*(nStates^-numel(elecAssign));
             fprintf('%s\t','S');
         end
     end
@@ -261,12 +252,10 @@ while ~isempty(activeSet)
         warning('The number of branches exceeded 1000.')
     end
 end
-currentArray.zCopy = z2;
-currentArray.activeSetCopy = activeSet2;
-currentArray.t = t;
-currentArray.convTime = toc;
-currentArray.avgActSetSize = totalactSetSize/t*pr;
-currentArray.percentLoss = 100*(currentArray.origObj-zhat)/currentArray.origObj;
+StimPattern.t = t;
+StimPattern.convTime = toc;
+StimPattern.avgActSetSize = activeSetSizeCount/t*pr;
+StimPattern.percentLoss = 100*(StimPattern.origObj-zhat)/StimPattern.origObj;
 fprintf('%s%f%s\n','Limited current sources optimization is solved in ',toc,' seconds.');
 end
 
@@ -308,7 +297,7 @@ for k = 2:numel(conf)
         pot(conf{k}(ks)) == pot(conf{k}(1));
     end
 end
- cvx_end
+cvx_end
 
 %% Not solved, medium precision is tried
 if ~strcmp(cvx_status,'Solved')

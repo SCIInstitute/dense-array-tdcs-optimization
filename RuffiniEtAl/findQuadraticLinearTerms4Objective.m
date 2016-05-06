@@ -1,5 +1,5 @@
-function [Q,b] = findQuadraticLinearTerms4Objective(mapV2E, T, roi, surfNormal, tmap, tMin, E0) 
-%Finds quadratic and linear terms for the objective function 
+function [Q,b] = findQuadraticLinearTerms4Objective(mapV2E, T, roi, surfNormal, tmap, tMin, E0)
+%Finds quadratic and linear terms for the objective function
 %
 %
 % Synopsis: [Q,b] = findQuadraticLinearTerms4Objective(headMesh, mapV2E, ...
@@ -25,7 +25,7 @@ N = size(mapV2E,2); % # nodes
 L = size(T,2); % # electrodes
 
 %if size(T,1) ~= N
- %   error('mismatch in transfer matrix size');
+%   error('mismatch in transfer matrix size');
 %end
 if size(roi,2) ~= M
     roi = roi';
@@ -39,9 +39,6 @@ if (numel(tmap) == M)
     tmap = tmap(roi==1);
 end
 
-if isempty(tMin)
-    tMin = 2;
-end
 if size(E0,2) == M
     E0 = E0';
 end
@@ -50,14 +47,17 @@ if numel(E0) == M
 elseif numel(E0) == 1
     E0 = E0 * ones(nnz(roi),1);
 end
-    
+
 
 %% Calculate mapping matrices
-tmap = -tmap; % inverting tmap to match 'excite positive regions by sending 
-              % currents in' convention.
-tmap(abs(tmap)<tMin) = 0; %thresholding tmap
+tmap = -tmap; % inverting tmap to match 'excite positive regions by sending
+% currents in' convention.
 W = abs(tmap);
-W(W==0) = 2;
+if ~isempty(tMin)
+    tmap(abs(tmap)<tMin) = 0; %thresholding tmap
+    W(tmap==0) = tMin;
+end
+
 wmat = sparse(1:numel(W),1:numel(W),W,numel(W),numel(W));
 tmat = sparse(1:numel(W),1:numel(W),tmap,numel(W),numel(W));
 roiIdx = find(roi==1);
@@ -67,7 +67,7 @@ surfNormalInCells = mat2cell(surfNormal',ones(size(surfNormal,2),1),3);
 mapOntoSurfNormal = sparse(blkdiag(surfNormalInCells{:}));
 clear surfNormalInCells;
 
-%normal component of electric field (tmap weighted) 
+%normal component of electric field (tmap weighted)
 Ewtemp = wmat *(mapOntoSurfNormal * mapV2E(eRoiIdx,:));
 %Ewtemp = ssparse(diag(W)) * Ewtemp;
 %Ew = Ewtemp * T;
