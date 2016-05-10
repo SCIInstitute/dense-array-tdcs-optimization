@@ -1,1 +1,1 @@
-# Please read for further info on repo
+# Matlab scripts for stimulus pattern optimization of dense array tDCS. 
