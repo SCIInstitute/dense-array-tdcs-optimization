@@ -1,25 +1,24 @@
-function [ I, dV ] = optimizeIntensityByParraEtAl(C, J0, tot)
-% Optimizes the electrode currents to yield maximum current intensity
-% at target points.
+function [ I, dV ] = optimizeIntensityByParraEtAl(C, E0, tot)
+% Optimizes the electrode currents to yield maximum electric field intensity
+% at the target.
 %
-% Synopsis: [ I, dV ] = optimizeIntensityByParraEtAl(C, J0, tot)
+% Synopsis: [ I, dV ] = optimizeIntensityByParraEtAl(C, E0, tot)
 %
-% Input:    C       =   matrix linking electrode currents to current
-%                       density at the target node(s).
-%           JO      =   desired current density orientation at the target.
+% Input:    C       =   matrix linking electrode currents to electric
+%                       field at the target node(s).
+%           EO      =   desired electric field orientation at the target.
 %           tot     =   total current constraint
 %
 % Output:   I       =   array of electrode currents.
 %           dV      =   dual variable(s) corresponding to constraints.
 
-% Notes:    1. Use the equation in section 3.4. of " Optimized multi-electrode 
-%           stimulation increases focality and intensity at the target.",
-%           Jacek P Dmochowski, et al., Journal of neural engineering 
-%           8.4 (2011): 046011.
-%
+% Notes:    1. The implementation is based on the equation (17) in section 3.4 
+%           of the article: Dmochowski et al., "Optimized multi-electrode 
+%           stimulation increases focality and intensity at the target," 
+%           Journal of neural engineering, 8.4 : 046011, 2011.
 
-v = J0' * C; % Linear coefficients for objective function
-L = size(C,2); % Number of electrodes
+v = E0' * C; % linear coefficients for objective function
+L = size(C,2); % number of electrodes
 
 cvx_begin quiet
 cvx_solver sedumi
