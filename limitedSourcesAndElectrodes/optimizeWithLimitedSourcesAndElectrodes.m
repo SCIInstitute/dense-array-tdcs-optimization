@@ -3,7 +3,7 @@ function [results] = optimizeWithLimitedSourcesAndElectrodes(w,Q,tot,ind,pmax,Te
 %  current sources and electrodes using a branch and bound algorithm
 %
 %
-% Synopsis: [currentArray] = optimizeWithLimitedSourcesAndElectrodes(w,...
+% Synopsis: [results] = optimizeWithLimitedSourcesAndElectrodes(w,...
 %             Q, tot, ind, pmax, Te, nSources, nElectrodes, Ithresh, zhat, vOrder)
 %
 %
@@ -12,21 +12,22 @@ function [results] = optimizeWithLimitedSourcesAndElectrodes(w,Q,tot,ind,pmax,Te
 %                           power in the brain outside the ROI
 %           tot         =   bound on the total injected current
 %           ind         =   bound on the individual electrode currents
-%           pmax        =   bound on the current power in the brain
+%           pmax        =   bound on the current power in the brain outside
+%                           the ROI
 %           Te          =   matrix linking electrode currents to electrode
 %                           potentials
 %           nSources    =   number of available current sources
 %           nElectrodes =   number of available electrodes
 %           Ithresh     =   threshold current; smaller values are set to 0
 %           vOrder      =   vertical ordering of the  electrodes in the
-%                           branch and bound algorithm. Choices: 'high margin',
-%                           'absolute', 'descend'
+%                           branch and bound algorithm. Choices: 'high margin'
+%                           (default), 'absolute', 'descend',
+%                           'contribution'
 %
 %
-% Output:  currentArray =   optimal electrode current stimulus pattern
+% Output:   results     =   optimal electrode current stimulus pattern
 
-% Notes:
-%   1. Potential unit is V.
+% Notes:   1. Potential unit is V.
 
 %% Reading inputs and checking sizes
 tic;
@@ -34,7 +35,7 @@ L = numel(w);
 pp = numel(Q);
 
 if size(ind,1) == L %In case reference electrode bound is not defined
-    ind(L+1,:) = ind(end,:); %Make reference electrode have the same bound as the last electrode
+    ind(L+1,:) = ind(1,:); %reference electrode bound = bound on first electrode
 end
 
 if size(ind,2) == 1 %Lower bound = - Upper bound
@@ -42,11 +43,19 @@ if size(ind,2) == 1 %Lower bound = - Upper bound
 end
 
 if nSources > 20
-    error('The number of current sources is less than 21.');
+    error('The number of available current sources should be less than 21.');
 end
 
 if isempty(nElectrodes)
     nElectrodes = L;
+end
+
+if isempty(vOrder)
+    vOrder = 'high margin';
+end
+
+if isempty(zhat)
+    zhat = -inf;
 end
 
 %% Find the unconstrained solution
@@ -91,51 +100,23 @@ end
 nStates = nSources + 1; %'not connected' is a state
 
 %% Initialize states for the electrodes.
-if isempty(zhat)
-    %Use k-means clustering to start the initialization.
-    [idx0,c0] = kmeans(Te*ca,nSources);
-    configuration0{1} = [];
-    for i=2:nStates
-        configuration0{i} = find(idx0 == i-1);
-    end
-    %idx2 = kmeans(1e-3*Te*ca,nSources+1);
-    %calculate zhat.
-    [results.initialState.x0,zhat] = solveRelaxedProblem(w,sqrtQ,tot,ind,pmax,Te,configuration0);
-    potentials2 = Te*ca;
-    if ~isempty(Ithresh)
-        bigCurrents = ca >= 2*Ithresh;
-    else
-        bigCurrents = ca >= 1e-5
-    end
-    bigCurrentIdx = find(bigCurrents == 1);
-    if (nnz(bigCurrents) >= nSources)
-        [idx1,c1] = kmeans(potentials2(bigCurrents),nSources);
-        configuration1{1} = find(bigCurrents==0);
-        for i=2:nStates
-            configuration1{i} = bigCurrentIdx(find(idx1 == i-1));
-        end
-        [results.initialState.x1,zhat1] = solveRelaxedProblem(w,sqrtQ,tot,ind,pmax,Te,configuration1);
-        if zhat1 > zhat
-            %fprintf('%s\n','Using not connected in the initialization is better.');
-            %fprintf('%s%f%s\n','Percentage increase for the initialization is ',100*(zhat1-zhat)/zhat,'.');
-            zhat = zhat1;
-            %disp(zhat1);
-        end
-    end
-    if strcmp(vOrder,'high margin')
-        [Dist,cIdx] = pdist2(c0,Te*ca,'euclidean','Smallest',1);
-        %IDEA: use also the center indices in the node selection process.
-        [~,idxOrder] = sort(Dist,'descend');
-    end
-    if strcmp(vOrder,'high margin')  && nnz(bigCurrents) >= nSources
-        if zhat1 == zhat
-        [Dist,cIdx] = pdist2(c1,Te*ca,'euclidean','Smallest',1);
-        %IDEA: use also the center indices in the node selection process.
-        [~,idxOrder] = sort(Dist,'descend');
-        end
-    end
+
+%Use k-means clustering to start the initialization.
+[idx0,c0] = kmeans(Te*ca,nSources);
+configuration0{1} = [];
+for i=2:nStates
+    configuration0{i} = find(idx0 == i-1);
 end
-% IDEA: Ordering of the electrodes for bAb algorithm may be initialized.
+
+%calculate zhat.
+[results.initialState.x0,zhat] = solveRelaxedProblem(w,sqrtQ,tot,ind,pmax,Te,configuration0);
+
+if strcmp(vOrder,'high margin')
+    [Dist,cIdx] = pdist2(c0,Te*ca,'euclidean','Smallest',1);
+    %IDEA: use also the center indices in the node selection process.
+    [~,idxOrder] = sort(Dist,'descend');
+end
+
 fprintf('%s\n','Initializating clustering of electrodes into states.');
 
 initSet = cell(nStates,1);
@@ -203,21 +184,9 @@ while ~isempty(activeSet)
     nextBranch = activeSet{idx};
     activeSet(idx) = [];
     z(idx) = [];
-    
-    %CHOOSE NEXT BRANCH: A FUNCTION OF OBJECTIVE VALUE AND BRANCH DEPTH
-    
-    %Determination of p(r) and branching: Fr = R1 U R2 U ... U Rpr. CHANGE!
+     
+    %Determination of p(r) and branching: Fr = R1 U R2 U ... U Rpr.
     pr = max(2,min(numel(unique(nextBranch(nextBranch ~= '0')))+2,nStates));
-    %     if nStates*nextBranch+pr-1 > 2^52
-    %         parentelecAssign = dec2baseInfDigits(nStates*nextBranch,nStates);
-    %     elseif numel(nextBranch) >= 2
-    %         %When the branch idx is too high,i.e. higher than 2^52 already.
-    %         for ir = 1:numel(nextBranch)
-    %             parentelecAssign = [dec2base(nextBranch(ir),nStates) parentelecAssign];
-    %         end
-    %     else
-    %         parentelecAssign = dec2base(nextBranch,nStates);
-    %     end
     fprintf('%-24s\t', nextBranch);
     branchDepth = numel(nextBranch)+1;
     for i = 1:pr
@@ -225,18 +194,19 @@ while ~isempty(activeSet)
         %  Ft+i = Fr n Ri
         
         %% Calculating the xt+i, zt+i for the branch
+        
         % Assign electrode states according to branch number
         % Extract electrode states from the assignment vector and ordering
         elecAssign = [nextBranch labelAlphabet(i)];
         nConnectedElectrodes = numel(elecAssign(elecAssign ~= '0'));
-        % Continue if the number of electrodes exceed the total number of
-        % electrodes
-        if(nConnectedElectrodes > nElectrodes)
-            continue
+        
+        %continue if # connected electrodes exceed available number of electrodes
+        if(nConnectedElectrodes == nElectrodes)
+            elecAssign = [elecAssign repmat('0',1,L-numel(elecAssign))];
         end
         
-        %Don't create a branch if the assignment is not sorted, not to
-        %solve equivalent problems
+        %Don't create a branch if the assignment is not sorted, to avoid
+        %solving identical problems
         [~,ia,~] = unique(elecAssign(elecAssign ~= '0'));
         if issorted(ia)
             for j = 1:nStates
